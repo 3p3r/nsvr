@@ -1,6 +1,7 @@
 #include "nsvr_internal.hpp"
 
 #include "nsvr/nsvr_discoverer.hpp"
+#include "nsvr/nsvr_base.hpp"
 
 namespace nsvr
 {
@@ -45,6 +46,93 @@ void Internal::reset(Discoverer& discoverer)
     discoverer.mDuration    = 0;
     discoverer.mSampleRate  = 0;
     discoverer.mBitRate     = 0;
+}
+
+void Internal::reset(Player& player)
+{
+    player.mState         = GST_STATE_NULL;
+    player.mPipeline      = nullptr;
+    player.mGstBus        = nullptr;
+    player.mCurrentBuffer = nullptr;
+    player.mCurrentSample = nullptr;
+    player.mWidth         = 0;
+    player.mHeight        = 0;
+    player.mDuration      = 0;
+    player.mTime          = 0.;
+    player.mVolume        = 1.;
+    player.mRate          = 1.;
+    player.mPendingSeek   = 0.;
+    player.mSeekingLock   = false;
+    g_atomic_int_set(&player.mBufferDirty, FALSE);
+}
+
+GstFlowReturn Internal::onPreroll(GstElement* appsink, Player* player)
+{
+    GstSample* sample = gst_app_sink_pull_preroll(GST_APP_SINK(appsink));
+
+    // Here's our chance to get the actual dimension of the media.
+    // The actual dimension might be slightly different from what
+    // is passed into and requested from the pipeline.
+    if (sample != nullptr)
+    {
+        if (GstCaps *caps = gst_sample_get_caps(sample))
+        {
+            if (gst_caps_is_fixed(caps) != FALSE)
+            {
+                if (const GstStructure *str = gst_caps_get_structure(caps, 0))
+                {
+                    if (gst_structure_get_int(str, "width", &player->mWidth) == FALSE ||
+                        gst_structure_get_int(str, "height", &player->mHeight) == FALSE)
+                    {
+                        player->onError("No width/height information available.");
+                    }
+                }
+            }
+            else
+            {
+                player->onError("caps is not fixed for this media.");
+            }
+        }
+    }
+
+    processSample(player, sample);
+    return GST_FLOW_OK;
+}
+
+GstFlowReturn Internal::onSampled(GstElement* appsink, Player* player)
+{
+    processSample(player, gst_app_sink_pull_sample(GST_APP_SINK(appsink)));
+    return GST_FLOW_OK;
+}
+
+void Internal::processSample(Player *const player, GstSample* const sample)
+{
+    // Check if UI thread has consumed the last frame
+    if (g_atomic_int_get(&player->mBufferDirty) != FALSE) {
+        // Simply, skip this sample. UI is not consuming fast enough.
+        gst_sample_unref(sample);
+        return;
+    }
+
+    // Acquire and hold onto the new frame (until UI consumes it)
+    player->mCurrentSample = sample;
+    player->mCurrentBuffer = gst_sample_get_buffer(sample);
+    gst_buffer_map(player->mCurrentBuffer, &player->mCurrentMapInfo, GST_MAP_READ);
+
+    // Signal UI thread it can consume
+    g_atomic_int_set(&player->mBufferDirty, TRUE);
+}
+
+void Internal::processDuration(Player& player)
+{
+    g_return_if_fail(player.mPipeline != nullptr);
+
+    // Nanoseconds
+    gint64 duration_ns = 0;
+    if (gst_element_query_duration(GST_ELEMENT(player.mPipeline), GST_FORMAT_TIME, &duration_ns) != FALSE) {
+        // Seconds
+        player.mDuration = duration_ns / gdouble(GST_SECOND);
+    }
 }
 
 std::string Internal::processPath(const std::string& path)

@@ -22,15 +22,21 @@ template< class T > struct no_ptr<T*>    { typedef T type; };
 #define BIND_TO_SCOPE(var) BindToScope<\
     no_ptr<decltype(var)>::type> scoped_##var(var);
 
+class Player;
 class Discoverer;
 
 class Internal
 {
 public:
-    static bool         gstreamerInitialized();
-    static void         reset(Discoverer& discoverer);
-    static std::string  processPath(const std::string& path);
-    static bool         isNullOrEmpty(const char* const str);
+    static bool             gstreamerInitialized();
+    static void             reset(Discoverer& discoverer);
+    static std::string      processPath(const std::string& path);
+    static bool             isNullOrEmpty(const char* const str);
+    static void             reset(Player& player);
+    static GstFlowReturn    onPreroll(GstElement* appsink, Player* player);
+    static GstFlowReturn    onSampled(GstElement* appsink, Player* player);
+    static void             processSample(Player *const player, GstSample* const sample);
+    static void             processDuration(Player& player);
 };
 
 }
