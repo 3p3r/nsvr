@@ -18,13 +18,17 @@ SET( NSVR_HEADERS
   "${NSVR_INCLUDE}/nsvr.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_base.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_client.hpp"
-  "${NSVR_INCLUDE}/nsvr/nsvr_server.hpp" )
+  "${NSVR_INCLUDE}/nsvr/nsvr_server.hpp"
+  "${NSVR_INCLUDE}/nsvr/nsvr_discoverer.hpp" )
 
 SET( NSVR_SOURCES
   "${NSVR_SOURCE}/nsvr.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_base.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_client.cpp"
-  "${NSVR_SOURCE}/nsvr/nsvr_server.cpp" )
+  "${NSVR_SOURCE}/nsvr/nsvr_server.cpp"
+  "${NSVR_SOURCE}/nsvr/nsvr_internal.hpp"
+  "${NSVR_SOURCE}/nsvr/nsvr_internal.cpp"
+  "${NSVR_SOURCE}/nsvr/nsvr_discoverer.cpp" )
 
 ADD_LIBRARY( nsvr.static STATIC ${NSVR_HEADERS} ${NSVR_SOURCES} )
 TARGET_ADD_GSTREAMER_MODULES( nsvr.static
