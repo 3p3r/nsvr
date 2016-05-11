@@ -77,13 +77,15 @@ public:
 
 protected:
     //! Video frame callback, video buffer data and its size are passed in
-    virtual void    onFrame(guchar* buf, gsize size) const {};
+    virtual void    onFrame(guchar* buf, gsize size) const {}
     //! Error callback, will be called if player encounters any errors. With a string message
-    virtual void    onError(const gchar* msg) const {};
+    virtual void    onError(const gchar* msg) const {}
     //! State change event, propagated by the pipeline. Old state passed in, obtain new state with getState()
-    virtual void    onState(GstState) const {};
+    virtual void    onState(GstState) const {}
     //! Called on end of the stream. Playback is finished at this point
-    virtual void    onStreamEnd() const {};
+    virtual void    onStreamEnd() const {}
+    //! Called by open() to construct pipeline's clock
+    virtual void    setupClock() {}
 
     //! @cond
     //! These APIs are present in case user of ngw needs to hold on to a frame beyond scope of the onFrame(...)

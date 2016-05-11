@@ -116,6 +116,8 @@ bool Player::open(const std::string& path, gint width, gint height, const std::s
                 callbacks.new_sample    = APP_SINK_CB(&Internal::onSampled);
 
                 gst_app_sink_set_callbacks(scoped_app_sink.pointer, &callbacks, this, nullptr);
+
+                setupClock();
             }
 
             // Going from NULL => READY => PAUSE forces the
