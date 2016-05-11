@@ -63,7 +63,7 @@ void Internal::reset(Player& player)
     player.mRate          = 1.;
     player.mPendingSeek   = 0.;
     player.mSeekingLock   = false;
-    g_atomic_int_set(&player.mBufferDirty, FALSE);
+    player.mBufferDirty   = false;
 }
 
 GstFlowReturn Internal::onPreroll(GstElement* appsink, Player* player)
@@ -108,19 +108,21 @@ GstFlowReturn Internal::onSampled(GstElement* appsink, Player* player)
 void Internal::processSample(Player *const player, GstSample* const sample)
 {
     // Check if UI thread has consumed the last frame
-    if (g_atomic_int_get(&player->mBufferDirty) != FALSE) {
+    if (player->mBufferDirty)
+    {
         // Simply, skip this sample. UI is not consuming fast enough.
         gst_sample_unref(sample);
-        return;
     }
+    else
+    {
+        // Acquire and hold onto the new frame (until UI consumes it)
+        player->mCurrentSample = sample;
+        player->mCurrentBuffer = gst_sample_get_buffer(sample);
+        gst_buffer_map(player->mCurrentBuffer, &player->mCurrentMapInfo, GST_MAP_READ);
 
-    // Acquire and hold onto the new frame (until UI consumes it)
-    player->mCurrentSample = sample;
-    player->mCurrentBuffer = gst_sample_get_buffer(sample);
-    gst_buffer_map(player->mCurrentBuffer, &player->mCurrentMapInfo, GST_MAP_READ);
-
-    // Signal UI thread it can consume
-    g_atomic_int_set(&player->mBufferDirty, TRUE);
+        // Signal UI thread it can consume
+        player->mBufferDirty = true;
+    }
 }
 
 void Internal::processDuration(Player& player)

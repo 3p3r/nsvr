@@ -21,65 +21,6 @@ Player::~Player()
     close();
 }
 
-const gchar* getVersion()
-{
-#   define STRINGIFO(v) #v
-#   define STRINGIFY(v) STRINGIFO v
-
-    return "1.0.0" "_"
-        STRINGIFY(GST_VERSION_MAJOR) "."
-        STRINGIFY(GST_VERSION_MINOR) "."
-        STRINGIFY(GST_VERSION_MICRO) "."
-        STRINGIFY(GST_VERSION_NANO);
-}
-
-void addPluginPath(const gchar* path)
-{
-    if (Internal::isNullOrEmpty(path))
-    {
-        g_debug("Plug-in path supplied is empty.");
-        return;
-    }
-
-    if (!Internal::gstreamerInitialized())
-    {
-        g_debug("You are not able to add plug-in path. %s",
-                "GStreamer could not be initialized.");
-        return;
-    }
-
-    if (GstRegistry *registry = gst_registry_get())
-    {
-        gst_registry_scan_path(registry, path);
-    }
-}
-
-void addBinaryPath(const gchar* path)
-{
-    if (Internal::isNullOrEmpty(path))
-    {
-        g_debug("Binary path supplied is empty.");
-        return;
-    }
-
-    gchar* path_var = nullptr;
-    BIND_TO_SCOPE(path_var);
-
-    if (Internal::isNullOrEmpty(g_getenv("PATH")))
-    {
-        path_var = g_strdup(path);
-    }
-    else
-    {
-        path_var = g_strdup_printf("%s;%s", g_getenv("PATH"), path);
-    }
-
-    if (g_setenv("PATH", scoped_path_var.pointer, TRUE) == FALSE)
-    {
-        g_debug("Unable to append %s to PATH.", path);
-    }
-}
-
 bool Player::open(const gchar *path, gint width, gint height, const gchar* fmt)
 {
     bool success = false;
@@ -350,7 +291,7 @@ void Player::update()
         }
     }
 
-    if (g_atomic_int_get(&mBufferDirty) != FALSE)
+    if (mBufferDirty)
     {
         onFrame(
             mCurrentMapInfo.data,
@@ -364,7 +305,7 @@ void Player::update()
         mCurrentSample = nullptr;
 
         // Signal Streaming thread it can produce
-        g_atomic_int_set(&mBufferDirty, FALSE);
+        mBufferDirty = false;
     }
 }
 

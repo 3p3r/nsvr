@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gst/gst.h>
+#include <atomic>
 
 namespace nsvr
 {
@@ -109,11 +110,11 @@ private:
     mutable gdouble mVolume     = 1.;       //!< Volume of the media being played
     mutable gdouble mRate       = 1.;       //!< Rate of playback, negative number for reverse playback
 
-    volatile gint   mBufferDirty;           //!< Atomic boolean, representing a new frame is ready by GStreamer
-    mutable gdouble mPendingSeek;           //!< Value of the seek operation pending to be executed
-    mutable bool    mSeekingLock;           //!< Boolean flag, indicating a seek operation pending to be executed
-    bool            mLoop       = false;    //!< Flag, indicating whether the player is looping or not
-    bool            mMute       = false;    //!< Flag, indicating whether the player is muted or not
+    std::atomic<bool>   mBufferDirty;       //!< Atomic boolean, representing a new frame is ready by GStreamer
+    mutable gdouble     mPendingSeek;       //!< Value of the seek operation pending to be executed
+    mutable bool        mSeekingLock;       //!< Boolean flag, indicating a seek operation pending to be executed
+    bool                mLoop   = false;    //!< Flag, indicating whether the player is looping or not
+    bool                mMute   = false;    //!< Flag, indicating whether the player is muted or not
 };
 
 }
