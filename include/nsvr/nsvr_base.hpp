@@ -1,7 +1,9 @@
 #pragma once
 
 #include <gst/gst.h>
+
 #include <atomic>
+#include <string>
 
 namespace nsvr
 {
@@ -23,13 +25,13 @@ public:
     Player();
     virtual         ~Player();
     //! opens a media file, can resize and reformat the video (if any). Returns true on success
-    bool            open(const gchar *path, gint width, gint height, const gchar* fmt);
+    bool            open(const std::string& path, gint width, gint height, const std::string& fmt);
     //! opens a media file, can resize the video (if any). Returns true on success
-    bool            open(const gchar *path, gint width, gint height);
+    bool            open(const std::string& path, gint width, gint height);
     //! opens a media file, can reformat the video (if any). Returns true on success
-    bool            open(const gchar *path, const gchar* fmt);
+    bool            open(const std::string& path, const std::string& fmt);
     //! opens a media file and auto detects its meta data and outputs 32bit BGRA. Returns true on success
-    bool            open(const gchar *path);
+    bool            open(const std::string& path);
     //! closes the current media file and its associated resources (no op if no media)
     void            close();
     //! stops playback (setting time to 0)

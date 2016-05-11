@@ -2,6 +2,8 @@
 #include "nsvr/nsvr_base.hpp"
 #include "nsvr/nsvr_discoverer.hpp"
 
+#include <sstream>
+
 namespace nsvr
 {
 
@@ -21,19 +23,19 @@ Player::~Player()
     close();
 }
 
-bool Player::open(const gchar *path, gint width, gint height, const gchar* fmt)
+bool Player::open(const std::string& path, gint width, gint height, const std::string& fmt)
 {
     bool success = false;
     if (!Internal::gstreamerInitialized())
     {
-        onError("You cannot open a media with ngw.");
+        onError("You cannot open a media with nsvr.");
         return success;
     }
 
     // First close any current streams.
     close();
 
-    if (Internal::isNullOrEmpty(path))
+    if (path.empty())
     {
         onError("Supplied media path is empty.");
         return success;
@@ -42,28 +44,31 @@ bool Player::open(const gchar *path, gint width, gint height, const gchar* fmt)
     Discoverer discoverer;
     if (discoverer.open(path))
     {
-        gchar* pipeline_cmd = nullptr;
-        BIND_TO_SCOPE(pipeline_cmd);
+        std::stringstream pipeline_cmd;
 
         if (discoverer.getHasVideo())
         {
             // Create the pipeline expression
-            pipeline_cmd = g_strdup_printf(
-                "playbin uri=\"%s\" video-sink=\""
-                "appsink drop=yes async=no qos=yes sync=yes max-lateness=%lld "
-                "caps=video/x-raw,width=%d,height=%d,format=%s\"",
-                discoverer.getUri(),
-                static_cast<long long>(GST_SECOND),
-                width,
-                height,
-                Internal::isNullOrEmpty(fmt) ? "BGRA" : fmt);
+            pipeline_cmd
+                << "playbin uri=\""
+                << discoverer.getUri()
+                << "\" video-sink=\"appsink drop=yes async=no qos=yes sync=yes max-lateness="
+                << GST_SECOND
+                << " caps=video/x-raw,width="
+                << width
+                << ",height="
+                << height
+                << ",format="
+                << fmt
+                << "\"";
         }
         else if (discoverer.getHasAudio())
         {
             // Create the pipeline expression
-            pipeline_cmd = g_strdup_printf(
-                "playbin uri=\"%s\"",
-                discoverer.getUri());
+            pipeline_cmd
+                << "playbin uri=\""
+                << discoverer.getUri()
+                << "\"";
         }
         else
         {
@@ -71,9 +76,9 @@ bool Player::open(const gchar *path, gint width, gint height, const gchar* fmt)
             return success;
         }
 
-        if (!Internal::isNullOrEmpty(scoped_pipeline_cmd.pointer))
+        if (!pipeline_cmd.str().empty())
         {
-            mPipeline = gst_parse_launch(scoped_pipeline_cmd.pointer, nullptr);
+            mPipeline = gst_parse_launch(pipeline_cmd.str().c_str(), nullptr);
             if (mPipeline == nullptr)
             {
                 close();
@@ -145,19 +150,19 @@ bool Player::open(const gchar *path, gint width, gint height, const gchar* fmt)
     return success;
 }
 
-bool Player::open(const gchar *path, gint width, gint height)
+bool Player::open(const std::string& path, gint width, gint height)
 {
     return open(path, width, height, "BGRA");
 }
 
-bool Player::open(const gchar *path, const gchar* fmt)
+bool Player::open(const std::string& path, const std::string& fmt)
 {
     Discoverer discoverer;
     return discoverer.open(path) && open(path, discoverer.getWidth(), discoverer.getHeight(), fmt);
 
 }
 
-bool Player::open(const gchar *path)
+bool Player::open(const std::string& path)
 {
     Discoverer discoverer;
     return discoverer.open(path) && open(path, discoverer.getWidth(), discoverer.getHeight());

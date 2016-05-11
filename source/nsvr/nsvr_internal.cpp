@@ -29,11 +29,6 @@ bool Internal::gstreamerInitialized()
     }
 }
 
-bool Internal::isNullOrEmpty(const gchar* const str)
-{
-    return str == nullptr || !*str;
-}
-
 void Internal::reset(Discoverer& discoverer)
 {
     discoverer.mMediaUri    = "";
@@ -142,7 +137,7 @@ std::string Internal::processPath(const std::string& path)
     if (path.empty())
     {
         g_debug("Cannot process an empty path.");
-        return nullptr;
+        return "";
     }
 
     std::string processed_path;
@@ -150,7 +145,7 @@ std::string Internal::processPath(const std::string& path)
     // This is NULL if path is already a valid URI
     gchar* uri = g_filename_to_uri(path.c_str(), nullptr, nullptr);
 
-    if (!isNullOrEmpty(uri)) {
+    if (!(uri == nullptr || !*uri)) {
         processed_path = uri;
     }
     else {

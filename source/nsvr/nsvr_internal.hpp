@@ -31,7 +31,6 @@ public:
     static bool             gstreamerInitialized();
     static void             reset(Discoverer& discoverer);
     static std::string      processPath(const std::string& path);
-    static bool             isNullOrEmpty(const char* const str);
     static void             reset(Player& player);
     static GstFlowReturn    onPreroll(GstElement* appsink, Player* player);
     static GstFlowReturn    onSampled(GstElement* appsink, Player* player);
