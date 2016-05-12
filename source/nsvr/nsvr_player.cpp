@@ -1,5 +1,6 @@
 #include "nsvr_internal.hpp"
-#include "nsvr/nsvr_base.hpp"
+
+#include "nsvr/nsvr_player.hpp"
 #include "nsvr/nsvr_discoverer.hpp"
 
 #include <sstream>
