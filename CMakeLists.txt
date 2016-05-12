@@ -44,6 +44,8 @@ IF( Cinder_FOUND )
 
 SET( TEST_TARGETS
   "basic.playback"
+  "basic.client"
+  "basic.server"
   "multicast.peer" )
 
 FOREACH( TEST_TARGET ${TEST_TARGETS} )
