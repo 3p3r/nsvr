@@ -10,19 +10,18 @@ class PlayerClient : public Player, protected Peer
 {
 public:
     PlayerClient(const std::string& address, short port);
+    virtual void    close() override;
+    virtual void    update() override;
 
 protected:
     virtual void    onMessage(const std::string& message) override;
     virtual void    onError(const std::string& error) override;
     virtual void    setupClock() override;
-    virtual void    update() override;
-
-protected:
     void            requestClock();
 
 private:
     std::string     mClockAddress;
-    GstClockTime    mClockOffset;
+    GstClockTime    mBaseTime;
     short           mClockPort;
 };
 

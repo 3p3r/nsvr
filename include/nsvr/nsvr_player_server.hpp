@@ -10,12 +10,12 @@ class PlayerServer : public Player, protected Peer
 {
 public:
     PlayerServer(const std::string& address, short port);
+    virtual void    update() override;
 
 protected:
     virtual void    onMessage(const std::string& message) override;
     virtual void    onError(const std::string& error) override;
     virtual void    setupClock() override;
-    virtual void    update() override;
 
 protected:
     void            dispatchClock();

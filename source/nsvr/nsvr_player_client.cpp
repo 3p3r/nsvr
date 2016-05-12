@@ -6,7 +6,7 @@ namespace nsvr
 
 PlayerClient::PlayerClient(const std::string& address, short port)
     : mClockAddress(address)
-    , mClockOffset(0)
+    , mBaseTime(0)
     , mClockPort(port)
 {
     connect("239.0.0.1", 5000);
@@ -17,7 +17,7 @@ void PlayerClient::onMessage(const std::string& message)
     if (message.empty())
         return;
 
-    if (message.size() > 2)
+    if (message.size() > 1)
     {
         if (message[0] == 's')
         {
@@ -25,13 +25,9 @@ void PlayerClient::onMessage(const std::string& message)
             if (message[1] == 'o')
             {
                 // we have received a new offset
-                mClockOffset = std::stoi(message.substr(2));
+                mBaseTime = std::stoull(message.substr(2));
                 setupClock();
             }
-        }
-        else if (message[0] == 'c')
-        {
-
         }
     }
 }
@@ -43,23 +39,19 @@ void PlayerClient::onError(const std::string& error)
 
 void PlayerClient::setupClock()
 {
-    if (mClockOffset == 0)
-    {
-        requestClock();
-        return;
-    }
-
-    // reset my clock so it won't advance detached from net
-    gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
-    // get the net clock
-    if (GstClock *clock = gst_net_client_clock_new("clock0", mClockAddress.c_str(), mClockPort, mClockOffset))
+    stop();
+    
+    if (GstClock *clock = gst_net_client_clock_new(nullptr, mClockAddress.c_str(), mClockPort, mBaseTime))
     {
         BIND_TO_SCOPE(clock);
-        // set base time received from server
-        gst_element_set_base_time(mPipeline, mClockOffset);
-        // apply the net clock
+        
+        gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
+        gst_element_set_base_time(mPipeline, mBaseTime);
         gst_pipeline_use_clock(GST_PIPELINE(mPipeline), clock);
+
     }
+
+    play();
 }
 
 void PlayerClient::update()
@@ -71,6 +63,12 @@ void PlayerClient::update()
 void PlayerClient::requestClock()
 {
     send("cr");
+}
+
+void PlayerClient::close()
+{
+    requestClock();
+    Player::close();
 }
 
 }

@@ -33,7 +33,7 @@ public:
     //! opens a media file and auto detects its meta data and outputs 32bit BGRA. Returns true on success
     bool            open(const std::string& path);
     //! closes the current media file and its associated resources (no op if no media)
-    void            close();
+    virtual void    close();
     //! stops playback (setting time to 0)
     void            stop();
     //! resumes playback from its current time.
