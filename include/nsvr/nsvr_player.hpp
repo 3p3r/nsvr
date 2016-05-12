@@ -43,7 +43,7 @@ public:
     //! pauses playback (leaving time at its current position)
     void            pause();
     //! update loop logic, MUST be called often in your engine's update loop
-    void            update();
+    virtual void    update();
     //! answers duration of the media file. Valid after call to open()
     gdouble         getDuration() const;
     //! sets state of the player (GST_STATE_PAUSED, etc.)
@@ -96,7 +96,7 @@ protected:
     GstBuffer*      getBuffer() const;
     //! @endcond
 
-private:
+protected:
     //! @cond
     friend          class Internal;
     //! @endcond
