@@ -45,7 +45,7 @@ IF( Cinder_FOUND )
 SET( TEST_TARGETS
   "basic.playback"
   "complete.playback"
-  "multicast.server" )
+  "multicast.peer" )
 
 FOREACH( TEST_TARGET ${TEST_TARGETS} )
   ADD_EXECUTABLE( test.${TEST_TARGET}
