@@ -2,6 +2,16 @@
 
 #include "nsvr/nsvr_discoverer.hpp"
 #include "nsvr/nsvr_base.hpp"
+#include "nsvr/nsvr_peer.hpp"
+
+namespace {
+struct ScopedSocketRef
+{
+    ScopedSocketRef(GSocket *socket) : mSocket(socket) { g_object_ref(mSocket); }
+    ~ScopedSocketRef() { g_object_unref(mSocket); }
+    GSocket *mSocket;
+};
+}
 
 namespace nsvr
 {
@@ -130,6 +140,15 @@ void Internal::processDuration(Player& player)
         // Seconds
         player.mDuration = duration_ns / gdouble(GST_SECOND);
     }
+}
+
+gboolean Internal::onSocketDataAvailable(GSocket *socket, GIOCondition condition, gpointer user_data)
+{
+    ScopedSocketRef ss(socket);
+    gchar buffer[1024] = { 0 };
+    g_socket_receive(socket, buffer, sizeof(buffer) / sizeof(buffer[0]), NULL, NULL);
+    if (auto peer = static_cast<nsvr::Peer*>(user_data)) peer->onMessage(buffer);
+    return G_SOURCE_CONTINUE;
 }
 
 std::string Internal::processPath(const std::string& path)

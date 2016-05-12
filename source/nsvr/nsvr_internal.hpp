@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <gio/gio.h>
 #include <gst/gst.h>
 #include <gst/gstregistry.h>
 #include <gst/app/gstappsink.h>
@@ -36,6 +37,7 @@ public:
     static GstFlowReturn    onSampled(GstElement* appsink, Player* player);
     static void             processSample(Player *const player, GstSample* const sample);
     static void             processDuration(Player& player);
+    static gboolean         onSocketDataAvailable(GSocket *socket, GIOCondition condition, gpointer user_data);
 };
 
 }

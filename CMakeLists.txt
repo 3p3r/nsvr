@@ -19,6 +19,7 @@ SET( NSVR_HEADERS
   "${NSVR_INCLUDE}/nsvr/nsvr_base.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_client.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_server.hpp"
+  "${NSVR_INCLUDE}/nsvr/nsvr_peer.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_discoverer.hpp" )
 
 SET( NSVR_SOURCES
@@ -26,6 +27,7 @@ SET( NSVR_SOURCES
   "${NSVR_SOURCE}/nsvr/nsvr_base.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_client.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_server.cpp"
+  "${NSVR_SOURCE}/nsvr/nsvr_peer.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_internal.hpp"
   "${NSVR_SOURCE}/nsvr/nsvr_internal.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_discoverer.cpp" )
@@ -34,6 +36,7 @@ ADD_LIBRARY( nsvr.static STATIC ${NSVR_HEADERS} ${NSVR_SOURCES} )
 TARGET_ADD_GSTREAMER_MODULES( nsvr.static
 	gstreamer-1.0
 	gstreamer-app-1.0
+	gstreamer-net-1.0
 	gstreamer-pbutils-1.0 )
 
 FIND_PACKAGE( Cinder QUIET )
@@ -41,7 +44,8 @@ IF( Cinder_FOUND )
 
 SET( TEST_TARGETS
   "basic.playback"
-  "complete.playback" )
+  "complete.playback"
+  "multicast.server" )
 
 FOREACH( TEST_TARGET ${TEST_TARGETS} )
   ADD_EXECUTABLE( test.${TEST_TARGET}
@@ -49,6 +53,7 @@ FOREACH( TEST_TARGET ${TEST_TARGETS} )
   TARGET_ADD_GSTREAMER_MODULES( test.${TEST_TARGET}
 	gstreamer-1.0
 	gstreamer-app-1.0
+	gstreamer-net-1.0
 	gstreamer-pbutils-1.0 )
   CONFIGURE_CINDER_TARGET( test.${TEST_TARGET} )
   TARGET_LINK_LIBRARIES( test.${TEST_TARGET} nsvr.static )
