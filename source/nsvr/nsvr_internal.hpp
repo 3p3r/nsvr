@@ -3,6 +3,7 @@
 #include <string>
 #include <gio/gio.h>
 #include <gst/gst.h>
+#include <gst/net/net.h>
 #include <gst/gstregistry.h>
 #include <gst/app/gstappsink.h>
 #include <gst/pbutils/gstdiscoverer.h>

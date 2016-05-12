@@ -19,10 +19,12 @@ namespace nsvr
 template<> BindToScope<gchar>::~BindToScope()                   { g_free(pointer); pointer = nullptr; }
 template<> BindToScope<GList>::~BindToScope()                   { gst_discoverer_stream_info_list_free(pointer); pointer = nullptr; }
 template<> BindToScope<GError>::~BindToScope()                  { g_error_free(pointer); pointer = nullptr; }
+template<> BindToScope<GstClock>::~BindToScope()                { gst_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstMessage>::~BindToScope()              { gst_message_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstAppSink>::~BindToScope()              { g_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstDiscoverer>::~BindToScope()           { g_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstDiscovererInfo>::~BindToScope()       { gst_discoverer_info_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstNetTimeProvider>::~BindToScope()      { gst_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstDiscovererStreamInfo>::~BindToScope() { gst_discoverer_stream_info_unref(pointer); pointer = nullptr; }
 
 bool Internal::gstreamerInitialized()
