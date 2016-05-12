@@ -18,16 +18,16 @@ public:
     void    update() override;
     void    draw() override;
     void    mouseDown(MouseEvent event) override;
-    void    onMessage(const std::string& message) const override;
-    void    onError(const std::string& message) const override;
+    void    onMessage(const std::string& message) override;
+    void    onError(const std::string& message) override;
 };
 
-void MulticastPeer::onMessage(const std::string& message) const
+void MulticastPeer::onMessage(const std::string& message)
 {
     std::cout << "Peer message: " << message << std::endl;
 }
 
-void MulticastPeer::onError(const std::string& error) const
+void MulticastPeer::onError(const std::string& error)
 {
     std::cout << "Peer error: " << error << std::endl;
 }

@@ -115,7 +115,7 @@ void Peer::disconnect()
     g_clear_object(&mSendSocket);
 }
 
-void Peer::send(const std::string& message, unsigned timeout /*= 1*/) const
+void Peer::send(const std::string& message, unsigned timeout /*= 1*/)
 {
     if (!isConnected())
         return;
