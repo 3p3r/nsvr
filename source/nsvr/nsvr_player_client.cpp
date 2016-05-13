@@ -1,8 +1,6 @@
 #include "nsvr_internal.hpp"
 #include "nsvr/nsvr_player_client.hpp"
 
-#include <iostream>
-
 namespace nsvr
 {
 
@@ -20,18 +18,54 @@ void PlayerClient::onMessage(const std::string& message)
     if (message.empty() || message[0] == 'c')
         return;
 
-    if (message.size() > 1 && message[0] == 's' && message[1] == 'c' && mBaseTime == 0)
+    if (message.size() > 1 && message[0] == 's')
     {
-        gdouble         pos = 0;
-        mBaseTime       = 0;
-
-        for (const auto& cmd : Internal::explode(message.substr(2), '|'))
+        // server clock received
+        if (message[1] == 'c')
         {
-            if (cmd[0] == 'b')
-                mBaseTime = std::stoull(cmd.substr(1));
-        }
+            for (const auto& cmd : Internal::explode(message.substr(2), '|'))
+            {
+                if (cmd[0] == 'b')
+                    mBaseTime = std::stoull(cmd.substr(1));
+            }
 
-        setupClock();
+            setupClock();
+        }
+        // server heartbeat received
+        else if (message[1] == 'h')
+        {
+            gdouble time        = 0;
+            gdouble volume      = 0;
+            bool mute           = true;
+            GstState state      = GST_STATE_NULL;
+            GstClockTime base   = 0;
+
+            for (const auto& cmd : Internal::explode(message.substr(2), '|'))
+            {
+                if (cmd[0] == 't')
+                    time = std::stod(cmd.substr(1));
+                else if (cmd[0] == 'v')
+                    volume = std::stod(cmd.substr(1));
+                else if (cmd[0] == 'm')
+                    mute = (std::stoi(cmd.substr(1)) != FALSE);
+                else if (cmd[0] == 's')
+                    state = static_cast<GstState>(std::stoi(cmd.substr(1)));
+                else if (cmd[0] == 'b')
+                    base = std::stoull(cmd.substr(1));
+            }
+
+            if (getMute() != mute)
+                setMute(mute);
+
+            if (getVolume() != volume)
+                setVolume(volume);
+
+            if (getState() != state)
+                setState(state);
+
+            if (std::abs(getTime() - time) > 0.1)
+                setTime(time);
+        }
     }
 }
 
