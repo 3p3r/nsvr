@@ -19,6 +19,7 @@ protected:
     virtual void        setupClock() override;
 
 protected:
+    void                dispatchHeartbeat();
     void                dispatchClock(GstClockTime base);
     void                clearClock();
 
@@ -26,6 +27,8 @@ private:
     std::string         mClockAddress;
     GstObject           *mNetClock;
     GstClockTime        mClockOffset;
+    unsigned            mHeartbeatCounter;
+    unsigned            mHeartbeatFrequency;
     short               mClockPort;
 };
 

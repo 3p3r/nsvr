@@ -11,6 +11,8 @@ PlayerServer::PlayerServer(const std::string& address, short port)
     : mClockAddress(address)
     , mClockPort(port)
     , mNetClock(nullptr)
+    , mHeartbeatCounter(0)
+    , mHeartbeatFrequency(30)
 {
     connect("239.0.0.1", 5000);
 }
@@ -50,6 +52,25 @@ void PlayerServer::setupClock()
     }
 }
 
+void PlayerServer::dispatchHeartbeat()
+{
+    std::stringstream dispatch_cmd;
+
+    dispatch_cmd << "sh";
+    dispatch_cmd << "|";
+    dispatch_cmd << "t" << getTime();
+    dispatch_cmd << "|";
+    dispatch_cmd << "v" << getVolume();
+    dispatch_cmd << "|";
+    dispatch_cmd << "m" << getMute() ? TRUE : FALSE;
+    dispatch_cmd << "|";
+    dispatch_cmd << "s" << getState();
+    dispatch_cmd << "|";
+    dispatch_cmd << "b" << gst_clock_get_time(GST_CLOCK(mNetClock));
+
+    send(dispatch_cmd.str());
+}
+
 void PlayerServer::dispatchClock(GstClockTime base)
 {
     if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(mPipeline)))
@@ -85,6 +106,14 @@ void PlayerServer::update()
 {
     Player::update();
     iterate();
+
+    if (mHeartbeatCounter > mHeartbeatFrequency)
+    {
+        dispatchHeartbeat();
+        mHeartbeatCounter = 0;
+    }
+
+    mHeartbeatCounter++;
 }
 
 }
