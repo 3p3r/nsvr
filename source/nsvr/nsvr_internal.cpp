@@ -153,6 +153,46 @@ gboolean Internal::onSocketDataAvailable(GSocket *socket, GIOCondition condition
     return G_SOURCE_CONTINUE;
 }
 
+std::string Internal::implode(const std::vector<std::string>& elements, const std::string& glue)
+{
+    switch (elements.size())
+    {
+    case 0:
+        return "";
+    case 1:
+        return elements[0];
+    default:
+        std::ostringstream os;
+        std::copy(elements.begin(), elements.end() - 1, std::ostream_iterator<std::string>(os, glue.c_str()));
+        os << *elements.rbegin();
+        return os.str();
+    }
+}
+
+std::vector<std::string> Internal::explode(const std::string &input, char separator)
+{
+    std::vector<std::string> ret;
+    std::string::const_iterator cur = input.begin();
+    std::string::const_iterator beg = input.begin();
+    bool added = false;
+    while (cur < input.end())
+    {
+        if (*cur == separator)
+        {
+            ret.insert(ret.end(), std::string(beg, cur));
+            beg = ++cur;
+            added = true;
+        }
+        else
+        {
+            cur++;
+        }
+    }
+
+    ret.insert(ret.end(), std::string(beg, cur));
+    return ret;
+}
+
 std::string Internal::processPath(const std::string& path)
 {
     if (path.empty())

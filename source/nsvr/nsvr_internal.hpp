@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include <sstream>
+
 #include <gio/gio.h>
 #include <gst/gst.h>
 #include <gst/net/net.h>
@@ -39,6 +42,8 @@ public:
     static void             processSample(Player *const player, GstSample* const sample);
     static void             processDuration(Player& player);
     static gboolean         onSocketDataAvailable(GSocket *socket, GIOCondition condition, gpointer user_data);
+    static std::string              implode(const std::vector<std::string>& elements, const std::string& glue);
+    static std::vector<std::string> explode(const std::string &input, char separator);
 };
 
 }
