@@ -236,7 +236,6 @@ void Player::update()
                     BIND_TO_SCOPE(err);
                     gst_message_parse_error(msg, &err, nullptr);
                     onError(scoped_err.pointer->message);
-                    close();
                 }
                 break;
 
@@ -337,7 +336,7 @@ void Player::setTime(gdouble time)
 {
     g_return_if_fail(mPipeline != nullptr);
 
-    if (mSeekingLock)
+    if (mSeekingLock || mDuration == 0)
     {
         mPendingSeek = time;
         return;
