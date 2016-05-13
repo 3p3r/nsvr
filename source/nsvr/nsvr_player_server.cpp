@@ -10,31 +10,18 @@ namespace nsvr
 PlayerServer::PlayerServer(const std::string& address, short port)
     : mClockAddress(address)
     , mClockPort(port)
+    , mNetClock(nullptr)
 {
     connect("239.0.0.1", 5000);
 }
 
 void PlayerServer::onMessage(const std::string& message)
 {
-    if (message.empty())
+    if (message.empty() || message[0] == 's')
         return;
 
-    if (message.size() > 1)
-    {
-        if (message[0] == 'c')
-        {
-            // this is a command sent from a client
-            if (message[1] == 'r')
-            {
-                // we have received a request to dispatch
-                dispatchClock();
-
-                stop();
-                setupClock();
-                play();
-            }
-        }
-    }
+    if (message.size() > 1 && message[0] == 'c' && message[1] == 'c')
+        dispatchClock(gst_element_get_base_time(mPipeline));
 }
 
 void PlayerServer::onError(const std::string& error)
@@ -44,28 +31,54 @@ void PlayerServer::onError(const std::string& error)
 
 void PlayerServer::setupClock()
 {
+    clearClock();
+
     if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(mPipeline)))
     {
         BIND_TO_SCOPE(clock);
-        gst_pipeline_use_clock(GST_PIPELINE(mPipeline), clock);
-        
-        if (GstNetTimeProvider* clock_provider = gst_net_time_provider_new(clock, mClockAddress.c_str(), mClockPort))
-        {
-            BIND_TO_SCOPE(clock_provider);
-            
-            gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
-            gst_element_set_base_time(mPipeline, gst_clock_get_time(clock));
 
-            dispatchClock();
+        gst_pipeline_use_clock(GST_PIPELINE(mPipeline), clock);
+        GstClockTime base_time = gst_clock_get_time(clock);
+        
+        if (mNetClock = GST_OBJECT(gst_net_time_provider_new(clock, mClockAddress.c_str(), mClockPort)))
+        {
+            gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
+            gst_element_set_base_time(mPipeline, base_time);
+
+            dispatchClock(base_time);
         }
     }
 }
 
-void PlayerServer::dispatchClock()
+void PlayerServer::dispatchClock(GstClockTime base)
 {
-    std::stringstream dispatch_cmd;
-    dispatch_cmd << "so" << gst_element_get_base_time(mPipeline);
-    send(dispatch_cmd.str());
+    if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(mPipeline)))
+    {
+        BIND_TO_SCOPE(clock);
+
+        std::stringstream dispatch_cmd;
+
+        dispatch_cmd << "sc";
+        dispatch_cmd << "|";
+        dispatch_cmd << "b" << base;
+
+        send(dispatch_cmd.str());
+    }
+}
+
+void PlayerServer::clearClock()
+{
+    if (mNetClock != nullptr)
+    {
+        gst_object_unref(mNetClock);
+        mNetClock = nullptr;
+    }
+}
+
+void PlayerServer::close()
+{
+    clearClock();
+    Player::close();
 }
 
 void PlayerServer::update()

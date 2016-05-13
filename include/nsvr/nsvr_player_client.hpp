@@ -17,10 +17,14 @@ protected:
     virtual void    onMessage(const std::string& message) override;
     virtual void    onError(const std::string& error) override;
     virtual void    setupClock() override;
+
+protected:
     void            requestClock();
+    void            clearClock();
 
 private:
     std::string     mClockAddress;
+    GstClock        *mNetClock;
     GstClockTime    mBaseTime;
     short           mClockPort;
 };
