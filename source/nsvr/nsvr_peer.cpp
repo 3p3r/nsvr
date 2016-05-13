@@ -56,8 +56,7 @@ bool Peer::connect(const std::string& mutlicast_group, short multicast_port)
 
     g_socket_set_multicast_loopback(mReceiveSocket, TRUE);
     g_socket_set_blocking(mReceiveSocket, FALSE);
-    
-    g_socket_set_blocking(mSendSocket, TRUE);
+    g_socket_set_blocking(mSendSocket, FALSE);
     g_socket_set_broadcast(mSendSocket, TRUE);
 
     mListenGroup = g_inet_address_new_any(GSocketFamily::G_SOCKET_FAMILY_IPV4);
