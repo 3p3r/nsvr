@@ -79,6 +79,12 @@ void PlayerClient::setupClock()
     pause();
     clearClock();
 
+    if (mBaseTime == 0)
+    {
+        requestClock();
+        return;
+    }
+
     if (GstClock *net_clock = gst_net_client_clock_new(nullptr, mClockAddress.c_str(), mClockPort, mBaseTime))
     {
         mNetClock = net_clock;
@@ -115,7 +121,6 @@ void PlayerClient::clearClock()
 void PlayerClient::close()
 {
     clearClock();
-    requestClock();
     Player::close();
 }
 
