@@ -25,7 +25,7 @@ protected:
 
 private:
     std::string         mClockAddress;
-    GstObject           *mNetClock;
+    GstClock            *mNetClock;
     GstClockTime        mClockOffset;
     unsigned            mHeartbeatCounter;
     unsigned            mHeartbeatFrequency;

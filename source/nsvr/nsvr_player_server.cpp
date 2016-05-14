@@ -42,7 +42,7 @@ void PlayerServer::setupClock()
         gst_pipeline_use_clock(GST_PIPELINE(mPipeline), clock);
         GstClockTime base_time = gst_clock_get_time(clock);
         
-        if (mNetClock = GST_OBJECT(gst_net_time_provider_new(clock, mClockAddress.c_str(), mClockPort)))
+        if (mNetClock = GST_CLOCK(gst_net_time_provider_new(clock, mClockAddress.c_str(), mClockPort)))
         {
             gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
             gst_element_set_base_time(mPipeline, base_time);
@@ -66,7 +66,7 @@ void PlayerServer::dispatchHeartbeat()
     dispatch_cmd << "|";
     dispatch_cmd << "s" << getState();
     dispatch_cmd << "|";
-    dispatch_cmd << "b" << gst_clock_get_time(GST_CLOCK(mNetClock));
+    dispatch_cmd << "b" << gst_clock_get_time(mNetClock);
 
     send(dispatch_cmd.str());
 }
