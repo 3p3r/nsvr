@@ -62,7 +62,7 @@ private:
 };
 
 BasicServer::CinderPlayer::CinderPlayer()
-    : PlayerServer("192.168.1.170", 5000)
+    : PlayerServer("127.0.0.1", 5000)
 {}
 
 void BasicServer::CinderPlayer::onFrame(guchar* buf, gsize size) const

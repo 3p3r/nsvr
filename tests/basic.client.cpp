@@ -62,7 +62,7 @@ private:
 };
 
 BasicClient::CinderPlayer::CinderPlayer()
-    : PlayerClient("192.168.1.170", 5000)
+    : PlayerClient("127.0.0.1", 5000)
 {}
 
 void BasicClient::CinderPlayer::onFrame(guchar* buf, gsize size) const
