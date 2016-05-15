@@ -17,15 +17,17 @@ protected:
     virtual void        onMessage(const std::string& message) override;
     virtual void        onError(const std::string& error) override;
     virtual void        setupClock() override;
+    virtual void        onSeekFinished() override;
 
 protected:
     void                dispatchHeartbeat();
-    void                dispatchClock(GstClockTime base);
+    void                adjustClock();
     void                clearClock();
 
 private:
     std::string         mClockAddress;
     GstClock            *mNetClock;
+    GstObject           *mNetProvider;
     GstClockTime        mClockOffset;
     unsigned            mHeartbeatCounter;
     unsigned            mHeartbeatFrequency;

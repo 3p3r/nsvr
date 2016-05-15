@@ -17,9 +17,9 @@ protected:
     virtual void    onMessage(const std::string& message) override;
     virtual void    onError(const std::string& error) override;
     virtual void    setupClock() override;
+    virtual void    onSeekFinished() override;
 
 protected:
-    void            requestClock();
     void            clearClock();
 
 private:
@@ -27,6 +27,7 @@ private:
     GstClock        *mNetClock;
     GstClockTime    mBaseTime;
     short           mClockPort;
+    bool            mClockLock;
 };
 
 }

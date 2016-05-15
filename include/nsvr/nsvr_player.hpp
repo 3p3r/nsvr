@@ -86,6 +86,8 @@ protected:
     virtual void    onStreamEnd() const {}
     //! Called by open() to construct pipeline's clock
     virtual void    setupClock() {}
+    //! Called when seeking operation is finished
+    virtual void    onSeekFinished() {}
 
     //! @cond
     //! These APIs are present in case user of ngw needs to hold on to a frame beyond scope of the onFrame(...)

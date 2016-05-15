@@ -9,6 +9,7 @@ PlayerClient::PlayerClient(const std::string& address, short port)
     , mBaseTime(0)
     , mClockPort(port)
     , mNetClock(nullptr)
+    , mClockLock(false)
 {
     connect("239.0.0.1", 5000);
 }
@@ -20,19 +21,8 @@ void PlayerClient::onMessage(const std::string& message)
 
     if (message.size() > 1 && message[0] == 's')
     {
-        // server clock received
-        if (message[1] == 'c')
-        {
-            for (const auto& cmd : Internal::explode(message.substr(2), '|'))
-            {
-                if (cmd[0] == 'b')
-                    mBaseTime = std::stoull(cmd.substr(1));
-            }
-
-            setupClock();
-        }
         // server heartbeat received
-        else if (message[1] == 'h')
+        if (message[1] == 'h')
         {
             gdouble time        = 0;
             gdouble volume      = 0;
@@ -59,12 +49,16 @@ void PlayerClient::onMessage(const std::string& message)
 
             if (getVolume() != volume)
                 setVolume(volume);
+            
+            if (gst_element_get_base_time(mPipeline) != base)
+            {
+                mClockLock = true;
+                mBaseTime = base;
+                stop();
+            }
 
-            if (getState() != state)
+            if (!mClockLock && getState() != state)
                 setState(state);
-
-            if (std::abs(getTime() - time) > 0.1)
-                setTime(time);
         }
     }
 }
@@ -76,14 +70,10 @@ void PlayerClient::onError(const std::string& error)
 
 void PlayerClient::setupClock()
 {
-    pause();
-    clearClock();
-
     if (mBaseTime == 0)
-    {
-        requestClock();
         return;
-    }
+
+    clearClock();
 
     if (GstClock *net_clock = gst_net_client_clock_new(nullptr, mClockAddress.c_str(), mClockPort, mBaseTime))
     {
@@ -95,18 +85,21 @@ void PlayerClient::setupClock()
     }
 
     mBaseTime = 0;
-    play();
+}
+
+void PlayerClient::onSeekFinished()
+{
+    if (mClockLock)
+    {
+        mClockLock = false;
+        setupClock();
+    }
 }
 
 void PlayerClient::update()
 {
     Player::update();
     iterate();
-}
-
-void PlayerClient::requestClock()
-{
-    send("cc");
 }
 
 void PlayerClient::clearClock()
@@ -116,6 +109,11 @@ void PlayerClient::clearClock()
         gst_object_unref(mNetClock);
         mNetClock = nullptr;
     }
+
+    gst_element_set_base_time(mPipeline, GST_CLOCK_TIME_NONE);
+
+    if (mClockLock)
+        mClockLock = false;
 }
 
 void PlayerClient::close()

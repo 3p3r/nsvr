@@ -267,6 +267,8 @@ void Player::update()
                     {
                         setTime(mPendingSeek);
                     }
+
+                    onSeekFinished();
                 }
                 break;
 
@@ -347,7 +349,7 @@ void Player::setTime(gdouble time)
         GstSeekFlags(
             GST_SEEK_FLAG_FLUSH |
             GST_SEEK_FLAG_ACCURATE),
-        gint64(CLAMP(time, 0, mDuration) * GST_SECOND)))
+        gint64(CLAMP(time, 0, mDuration) * GST_SECOND)) != FALSE)
     {
         mSeekingLock = true;
         mPendingSeek = -1.;
