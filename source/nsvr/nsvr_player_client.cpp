@@ -9,7 +9,6 @@ PlayerClient::PlayerClient(const std::string& address, short port)
     , mBaseTime(0)
     , mClockPort(port)
     , mNetClock(nullptr)
-    , mClockLock(false)
 {
     connect("239.0.0.1", 5000);
 }
@@ -51,13 +50,9 @@ void PlayerClient::onMessage(const std::string& message)
                 setVolume(volume);
             
             if (gst_element_get_base_time(mPipeline) != base)
-            {
-                mClockLock = true;
                 mBaseTime = base;
-                stop();
-            }
 
-            if (!mClockLock && getState() != state)
+            if (mBaseTime == 0 && getState() != state)
                 setState(state);
         }
     }
@@ -79,27 +74,27 @@ void PlayerClient::setupClock()
     {
         mNetClock = net_clock;
         
+        gst_pipeline_use_clock(GST_PIPELINE(mPipeline), net_clock);
         gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
         gst_element_set_base_time(mPipeline, mBaseTime);
-        gst_pipeline_use_clock(GST_PIPELINE(mPipeline), net_clock);
     }
 
     mBaseTime = 0;
-}
-
-void PlayerClient::onSeekFinished()
-{
-    if (mClockLock)
-    {
-        mClockLock = false;
-        setupClock();
-    }
 }
 
 void PlayerClient::update()
 {
     Player::update();
     iterate();
+
+    if (mPipeline != nullptr &&
+        mBaseTime != 0)
+    {
+        if (getState() != GST_STATE_READY)
+            stop();
+        else
+            setupClock();
+    }
 }
 
 void PlayerClient::clearClock()
@@ -111,9 +106,6 @@ void PlayerClient::clearClock()
     }
 
     gst_element_set_base_time(mPipeline, GST_CLOCK_TIME_NONE);
-
-    if (mClockLock)
-        mClockLock = false;
 }
 
 void PlayerClient::close()
