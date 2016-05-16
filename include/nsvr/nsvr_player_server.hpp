@@ -20,6 +20,9 @@ public:
     //! Gets the heartbeat frequency of server. Default: 30 seconds
     unsigned            getHeartbeatFrequency() const;
 
+    //! Override of Player's setTime to perform network seek
+    virtual void        setTime(gdouble time);
+
 protected:
     virtual void        onBeforeUpdate() override;
     virtual void        onBeforeClose() override;
@@ -33,6 +36,8 @@ private:
     GstClock*           mNetClock;
     GstObject*          mNetProvider;
     GstClockTime        mClockOffset;
+    gdouble             mPendingSeek;
+    GstState            mPendingState;
     unsigned            mHeartbeatCounter;
     unsigned            mHeartbeatFrequency;
     short               mClockPort;

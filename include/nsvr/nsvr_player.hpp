@@ -61,7 +61,7 @@ public:
     void            setState(GstState state);
 
     //! answers the current state of the player (GST_STATE_PAUSED, etc.)
-    GstState        getState() const;
+    GstState        getState(bool cached = true) const;
 
     //! sets if the player should loop playback in the end (true) or not (false)
     void            setLoop(bool on);
@@ -70,7 +70,7 @@ public:
     bool            getLoop() const;
 
     //! seeks the media to a given time. this is an @b async call
-    void            setTime(gdouble time);
+    virtual void    setTime(gdouble time);
 
     //! answers the current position of the player between [ 0. , getDuration() ]
     gdouble         getTime() const;

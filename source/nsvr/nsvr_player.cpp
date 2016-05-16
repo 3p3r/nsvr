@@ -189,9 +189,20 @@ void Player::setState(GstState state)
     gst_element_set_state(mPipeline, state);
 }
 
-GstState Player::getState() const
+GstState Player::getState(bool cached /* = true */) const
 {
-    return mState;
+    GstState state = mState;
+
+    if (!cached)
+    {
+        unsigned timeout = 10;
+        if (gst_element_get_state(mPipeline, &state, nullptr, timeout * GST_SECOND) == GST_STATE_CHANGE_FAILURE)
+        {
+            NSVR_LOG("Failed to obtain state in specified timeout.");
+        }
+    }
+
+    return state;
 }
 
 void Player::stop()
@@ -475,7 +486,7 @@ void Player::reset()
     mTime           = 0.;
     mVolume         = 1.;
     mRate           = 1.;
-    mPendingSeek    = 0.;
+    mPendingSeek    = -1.;
     mSeekingLock    = false;
     mBufferDirty    = false;
 }

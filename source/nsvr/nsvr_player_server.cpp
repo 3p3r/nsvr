@@ -13,6 +13,8 @@ PlayerServer::PlayerServer(const std::string& address, short port)
     , mNetProvider(nullptr)
     , mHeartbeatCounter(0)
     , mHeartbeatFrequency(30)
+    , mPendingSeek(-1.)
+    , mPendingState(GST_STATE_NULL)
 {
     if (defaultMulticastGroupEnabled() &&
         !connect(getDefaultMulticastIp(), getDefaultMulticastPort()))
@@ -34,6 +36,14 @@ void PlayerServer::setHeartbeatFrequency(unsigned freq)
 unsigned PlayerServer::getHeartbeatFrequency() const
 {
     return mHeartbeatFrequency;
+}
+
+void PlayerServer::setTime(gdouble time)
+{
+    if (mPendingSeek != time)
+        mPendingSeek = CLAMP(time, 0, getDuration());
+
+    mPendingState = getState(false);
 }
 
 void PlayerServer::setupClock()
@@ -114,6 +124,25 @@ void PlayerServer::onBeforeUpdate()
     {
         dispatchHeartbeat();
         mHeartbeatCounter = 0;
+    }
+
+    if (mPendingSeek >= 0.)
+    {
+        if (getState() != GST_STATE_PAUSED)
+            pause();
+        else
+        {
+            auto current_time = getTime();
+            auto time_diff = current_time - mPendingSeek;
+            auto time_base = gst_element_get_base_time(mPipeline) + GstClockTime(time_diff * GST_SECOND);
+
+            gst_element_set_base_time(mPipeline, time_base);
+
+            setState(mPendingState);
+
+            mPendingSeek = -1.;
+            mPendingState = GST_STATE_NULL;
+        }
     }
 
     mHeartbeatCounter++;
