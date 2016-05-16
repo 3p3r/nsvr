@@ -14,10 +14,6 @@
 #include <gst/app/gstappsink.h>
 #include <gst/pbutils/gstdiscoverer.h>
 
-#ifdef _WIN32
-#   include <windows.h>
-#endif
-
 namespace nsvr
 {
 
@@ -47,35 +43,22 @@ public:
     static GstFlowReturn    onSampled(GstElement* appsink, Player* player);
     static void             processSample(Player *const player, GstSample* const sample);
     static void             processDuration(Player& player);
-    static gboolean         onSocketDataAvailable(GSocket *socket, GIOCondition condition, gpointer user_data);
     static std::string              implode(const std::vector<std::string>& elements, const std::string& glue);
     static std::vector<std::string> explode(const std::string &input, char separator);
 };
 
 /*!
- * @class Logger
+ * @fn    log
  * @brief A very basic thread-safe logger. It also outputs to
  * DebugView if library is being compiled on Windows.
  * @note  Users should prefer using convenience NSVR_LOG macro.
  */
-class Logger
-{
-public:
-    static void log(const std::string& msg)
-    {
-        static std::mutex guard;
-        std::lock_guard<decltype(guard)> lock(guard);
-#ifdef _WIN32
-        ::OutputDebugStringA(msg.c_str());
-#endif
-        std::cout << msg;
-    }
-};
+void log(const std::string& msg);
 
 }
 
 /*! A convenience macro for nsvr::Logger. Input can be either string or stream
 constructed with << operator. NOTE: an end line will be automatically appended. */
 #ifndef NSVR_LOG
-#   define NSVR_LOG(buf) { std::stringstream ss; ss << "[NSVR]" << "[" << std::this_thread::get_id() << "] " << buf << std::endl; nsvr::Logger::log(ss.str()); }
+#   define NSVR_LOG(buf) { std::stringstream ss; ss << "[NSVR]" << "[" << std::this_thread::get_id() << "] " << buf << std::endl; nsvr::log(ss.str()); }
 #endif

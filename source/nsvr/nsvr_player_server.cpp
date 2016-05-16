@@ -24,11 +24,6 @@ void PlayerServer::onMessage(const std::string& message)
         return;
 }
 
-void PlayerServer::onError(const std::string& error)
-{
-    Player::onError(error.c_str());
-}
-
 void PlayerServer::setupClock()
 {
     clearClock();

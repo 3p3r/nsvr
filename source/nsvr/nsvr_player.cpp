@@ -3,8 +3,6 @@
 #include "nsvr/nsvr_player.hpp"
 #include "nsvr/nsvr_discoverer.hpp"
 
-#include <sstream>
-
 namespace nsvr
 {
 

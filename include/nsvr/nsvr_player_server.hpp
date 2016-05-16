@@ -15,7 +15,6 @@ public:
 
 protected:
     virtual void        onMessage(const std::string& message) override;
-    virtual void        onError(const std::string& error) override;
     virtual void        setupClock() override;
     virtual void        onSeekFinished() override;
 

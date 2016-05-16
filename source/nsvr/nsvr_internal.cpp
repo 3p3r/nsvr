@@ -4,14 +4,9 @@
 #include "nsvr/nsvr_player.hpp"
 #include "nsvr/nsvr_peer.hpp"
 
-namespace {
-struct ScopedSocketRef
-{
-    ScopedSocketRef(GSocket *socket) : mSocket(socket) { g_object_ref(mSocket); }
-    ~ScopedSocketRef() { g_object_unref(mSocket); }
-    GSocket *mSocket;
-};
-}
+#ifdef _WIN32
+#   include <windows.h>
+#endif
 
 namespace nsvr
 {
@@ -130,15 +125,6 @@ void Internal::processDuration(Player& player)
     }
 }
 
-gboolean Internal::onSocketDataAvailable(GSocket *socket, GIOCondition condition, gpointer user_data)
-{
-    ScopedSocketRef ss(socket);
-    gchar buffer[1024] = { 0 };
-    g_socket_receive(socket, buffer, sizeof(buffer) / sizeof(buffer[0]), NULL, NULL);
-    if (auto peer = static_cast<nsvr::Peer*>(user_data)) peer->onMessage(buffer);
-    return G_SOURCE_CONTINUE;
-}
-
 std::string Internal::implode(const std::vector<std::string>& elements, const std::string& glue)
 {
     switch (elements.size())
@@ -200,6 +186,16 @@ std::string Internal::processPath(const std::string& path)
     }
 
     return processed_path;
+}
+
+void log(const std::string& msg)
+{
+    static std::mutex guard;
+    std::lock_guard<decltype(guard)> lock(guard);
+#ifdef _WIN32
+    ::OutputDebugStringA(msg.c_str());
+#endif
+    std::cout << msg;
 }
 
 }

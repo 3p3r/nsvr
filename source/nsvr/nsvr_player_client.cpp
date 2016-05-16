@@ -58,11 +58,6 @@ void PlayerClient::onMessage(const std::string& message)
     }
 }
 
-void PlayerClient::onError(const std::string& error)
-{
-    Player::onError(error.c_str());
-}
-
 void PlayerClient::setupClock()
 {
     if (mBaseTime == 0)
