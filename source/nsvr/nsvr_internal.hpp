@@ -1,8 +1,11 @@
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <vector>
+#include <thread>
 #include <sstream>
+#include <iostream>
 
 #include <gio/gio.h>
 #include <gst/gst.h>
@@ -10,6 +13,10 @@
 #include <gst/gstregistry.h>
 #include <gst/app/gstappsink.h>
 #include <gst/pbutils/gstdiscoverer.h>
+
+#ifdef _WIN32
+#   include <windows.h>
+#endif
 
 namespace nsvr
 {
@@ -34,7 +41,6 @@ class Internal
 {
 public:
     static bool             gstreamerInitialized();
-    static void             reset(Discoverer& discoverer);
     static std::string      processPath(const std::string& path);
     static void             reset(Player& player);
     static GstFlowReturn    onPreroll(GstElement* appsink, Player* player);
@@ -46,4 +52,30 @@ public:
     static std::vector<std::string> explode(const std::string &input, char separator);
 };
 
+/*!
+ * @class Logger
+ * @brief A very basic thread-safe logger. It also outputs to
+ * DebugView if library is being compiled on Windows.
+ * @note  Users should prefer using convenience NSVR_LOG macro.
+ */
+class Logger
+{
+public:
+    static void log(const std::string& msg)
+    {
+        static std::mutex guard;
+        std::lock_guard<decltype(guard)> lock(guard);
+#ifdef _WIN32
+        ::OutputDebugStringA(msg.c_str());
+#endif
+        std::cout << msg;
+    }
+};
+
 }
+
+/*! A convenience macro for nsvr::Logger. Input can be either string or stream
+constructed with << operator. NOTE: an end line will be automatically appended. */
+#ifndef NSVR_LOG
+#   define NSVR_LOG(buf) { std::stringstream ss; ss << "[NSVR]" << "[" << std::this_thread::get_id() << "] " << buf << std::endl; nsvr::Logger::log(ss.str()); }
+#endif
