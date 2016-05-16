@@ -1,5 +1,5 @@
 #include "nsvr_internal.hpp"
-#include "nsvr/nsvr_player_client.hpp"
+#include "nsvr.hpp"
 
 #include <gst/net/net.h>
 
@@ -12,7 +12,12 @@ PlayerClient::PlayerClient(const std::string& address, short port)
     , mClockPort(port)
     , mNetClock(nullptr)
 {
-    connect("239.0.0.1", 5000);
+    if (defaultMulticastGroupEnabled() &&
+        !connect(getDefaultMulticastIp(), getDefaultMulticastPort()))
+    {
+        NSVR_LOG("Player was unable to join the default multicast group.");
+        return;
+    }
 }
 
 void PlayerClient::onMessage(const std::string& message)
@@ -51,7 +56,7 @@ void PlayerClient::onMessage(const std::string& message)
             if (getVolume() != volume)
                 setVolume(volume);
             
-            if (gst_element_get_base_time(mPipeline) != base)
+            if (mPipeline != nullptr && gst_element_get_base_time(mPipeline) != base)
                 mBaseTime = base;
 
             if (mBaseTime == 0 && getState() != state)
@@ -62,6 +67,8 @@ void PlayerClient::onMessage(const std::string& message)
 
 void PlayerClient::setupClock()
 {
+    g_return_if_fail(mPipeline != nullptr);
+
     if (mBaseTime == 0)
         return;
 
@@ -81,10 +88,11 @@ void PlayerClient::setupClock()
 
 void PlayerClient::onBeforeUpdate()
 {
+    g_return_if_fail(mPipeline != nullptr);
+
     iterate();
 
-    if (mPipeline != nullptr &&
-        mBaseTime != 0)
+    if (mBaseTime != 0)
     {
         if (getState() != GST_STATE_READY)
             stop();
@@ -95,6 +103,8 @@ void PlayerClient::onBeforeUpdate()
 
 void PlayerClient::clearClock()
 {
+    g_return_if_fail(mPipeline != nullptr);
+
     if (mNetClock != nullptr)
     {
         gst_object_unref(mNetClock);

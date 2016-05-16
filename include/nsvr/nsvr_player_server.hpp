@@ -6,27 +6,25 @@
 namespace nsvr
 {
 
-class PlayerServer : public Player, protected Peer
+class PlayerServer
+    : public Player
+    , public Peer
 {
 public:
     PlayerServer(const std::string& address, short port);
+
+protected:
     virtual void        onBeforeUpdate() override;
     virtual void        onBeforeClose() override;
-
-protected:
-    virtual void        onMessage(const std::string& message) override;
     virtual void        setupClock() override;
-    virtual void        onSeekFinished() override;
-
-protected:
     void                dispatchHeartbeat();
     void                adjustClock();
     void                clearClock();
 
 private:
     std::string         mClockAddress;
-    GstClock            *mNetClock;
-    GstObject           *mNetProvider;
+    GstClock*           mNetClock;
+    GstObject*          mNetProvider;
     GstClockTime        mClockOffset;
     unsigned            mHeartbeatCounter;
     unsigned            mHeartbeatFrequency;

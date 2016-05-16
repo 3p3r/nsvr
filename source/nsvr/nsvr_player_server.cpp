@@ -1,7 +1,6 @@
 #include "nsvr_internal.hpp"
-#include "nsvr/nsvr_player_server.hpp"
+#include "nsvr.hpp"
 
-#include <sstream>
 #include <gst/net/net.h>
 
 namespace nsvr
@@ -15,17 +14,18 @@ PlayerServer::PlayerServer(const std::string& address, short port)
     , mHeartbeatCounter(0)
     , mHeartbeatFrequency(30)
 {
-    connect("239.0.0.1", 5000);
-}
-
-void PlayerServer::onMessage(const std::string& message)
-{
-    if (message.empty() || message[0] == 's')
+    if (defaultMulticastGroupEnabled() &&
+        !connect(getDefaultMulticastIp(), getDefaultMulticastPort()))
+    {
+        NSVR_LOG("Player was unable to join the default multicast group.");
         return;
+    }
 }
 
 void PlayerServer::setupClock()
 {
+    g_return_if_fail(mPipeline != nullptr);
+
     clearClock();
 
     if ((mNetClock = gst_pipeline_get_clock(GST_PIPELINE(mPipeline))) &&
@@ -35,13 +35,10 @@ void PlayerServer::setupClock()
     }
 }
 
-void PlayerServer::onSeekFinished()
-{
-    adjustClock();
-}
-
 void PlayerServer::dispatchHeartbeat()
 {
+    g_return_if_fail(mPipeline != nullptr);
+
     std::stringstream dispatch_cmd;
 
     dispatch_cmd << "sh";
@@ -61,8 +58,7 @@ void PlayerServer::dispatchHeartbeat()
 
 void PlayerServer::adjustClock()
 {
-    if (mNetClock == nullptr || mNetProvider == nullptr)
-        return;
+    g_return_if_fail(mPipeline != nullptr && mNetClock != nullptr && mNetProvider != nullptr);
 
     GstClockTime base_time = gst_clock_get_time(mNetClock);
 
@@ -73,6 +69,8 @@ void PlayerServer::adjustClock()
 
 void PlayerServer::clearClock()
 {
+    g_return_if_fail(mPipeline != nullptr);
+
     if (mNetClock != nullptr)
     {
         gst_object_unref(mNetClock);
@@ -93,6 +91,8 @@ void PlayerServer::onBeforeClose()
 
 void PlayerServer::onBeforeUpdate()
 {
+    g_return_if_fail(mPipeline != nullptr);
+
     iterate();
 
     if (mHeartbeatCounter > mHeartbeatFrequency)

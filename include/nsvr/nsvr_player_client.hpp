@@ -6,23 +6,23 @@
 namespace nsvr
 {
 
-class PlayerClient : public Player, protected Peer
+class PlayerClient
+    : public Player
+    , public Peer
 {
 public:
     PlayerClient(const std::string& address, short port);
+
+protected:
     virtual void    onBeforeClose() override;
     virtual void    onBeforeUpdate() override;
-
-protected:
     virtual void    onMessage(const std::string& message) override;
     virtual void    setupClock() override;
-
-protected:
     void            clearClock();
 
 private:
     std::string     mClockAddress;
-    GstClock        *mNetClock;
+    GstClock*       mNetClock;
     GstClockTime    mBaseTime;
     short           mClockPort;
 };
