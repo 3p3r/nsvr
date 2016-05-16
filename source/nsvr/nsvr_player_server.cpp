@@ -22,6 +22,20 @@ PlayerServer::PlayerServer(const std::string& address, short port)
     }
 }
 
+void PlayerServer::setHeartbeatFrequency(unsigned freq)
+{
+    if (freq == mHeartbeatFrequency)
+        return;
+
+    mHeartbeatFrequency = freq;
+    mHeartbeatCounter = 0;
+}
+
+unsigned PlayerServer::getHeartbeatFrequency() const
+{
+    return mHeartbeatFrequency;
+}
+
 void PlayerServer::setupClock()
 {
     g_return_if_fail(mPipeline != nullptr);

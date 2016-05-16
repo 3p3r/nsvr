@@ -11,6 +11,7 @@ class PlayerClient
     , public Peer
 {
 public:
+    //! Constructs a client player with its clock listening from "address" and "port"
     PlayerClient(const std::string& address, short port);
 
 protected:

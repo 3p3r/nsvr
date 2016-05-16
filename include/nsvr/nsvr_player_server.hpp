@@ -11,7 +11,14 @@ class PlayerServer
     , public Peer
 {
 public:
+    //! Constructs a server player with its clock dispatched at "address" and "port"
     PlayerServer(const std::string& address, short port);
+
+    //! Sets the heartbeat frequency of server. Default: 30 seconds
+    void                setHeartbeatFrequency(unsigned freq);
+
+    //! Gets the heartbeat frequency of server. Default: 30 seconds
+    unsigned            getHeartbeatFrequency() const;
 
 protected:
     virtual void        onBeforeUpdate() override;
