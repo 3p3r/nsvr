@@ -38,11 +38,6 @@ class Internal
 public:
     static bool             gstreamerInitialized();
     static std::string      processPath(const std::string& path);
-    static void             reset(Player& player);
-    static GstFlowReturn    onPreroll(GstElement* appsink, Player* player);
-    static GstFlowReturn    onSampled(GstElement* appsink, Player* player);
-    static void             processSample(Player *const player, GstSample* const sample);
-    static void             processDuration(Player& player);
     static std::string              implode(const std::vector<std::string>& elements, const std::string& glue);
     static std::vector<std::string> explode(const std::string &input, char separator);
 };

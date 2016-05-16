@@ -11,9 +11,6 @@ public:
     //! Attempts to open a media for discovery.
     bool open(const std::string& path);
     
-    //! Returns path to discovered media or empty string ("") on failure
-    const std::string& getUri() const;
-    
     //! Returns width of the media if it contains video (0 otherwise)
     int getWidth() const;
     

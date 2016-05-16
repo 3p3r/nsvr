@@ -77,9 +77,8 @@ void PlayerClient::setupClock()
     mBaseTime = 0;
 }
 
-void PlayerClient::update()
+void PlayerClient::onBeforeUpdate()
 {
-    Player::update();
     iterate();
 
     if (mPipeline != nullptr &&
@@ -103,10 +102,9 @@ void PlayerClient::clearClock()
     gst_element_set_base_time(mPipeline, GST_CLOCK_TIME_NONE);
 }
 
-void PlayerClient::close()
+void PlayerClient::onBeforeClose()
 {
     clearClock();
-    Player::close();
 }
 
 }

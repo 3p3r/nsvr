@@ -50,7 +50,6 @@ private:
     public:
         gl::TextureRef  mTexture;
         virtual void    onFrame(guchar* buf, gsize size) const override;
-        virtual void    onError(const gchar* msg) const override;
         virtual void    onState(GstState old) const override;
         virtual void    onStreamEnd() const override;
     };
@@ -65,11 +64,6 @@ void BasicPlayback::CinderPlayer::onFrame(guchar* buf, gsize size) const
 {
     if (mTexture)
         mTexture->update(buf, GL_RGBA, GL_UNSIGNED_BYTE, 0, getWidth(), getHeight());
-}
-
-void BasicPlayback::CinderPlayer::onError(const gchar* msg) const
-{
-    std::cerr << "Error received from GStreamer: " << msg << std::endl;
 }
 
 void BasicPlayback::CinderPlayer::onStreamEnd() const
@@ -117,9 +111,6 @@ void BasicPlayback::keyDown(KeyEvent event)
         break;
     case 'f': case 'F':
         setFullScreen(!isFullScreen());
-        break;
-    case 'r': case 'R':
-        mPlayer.setRate(-1. * mPlayer.getRate());
         break;
     default:
         break;

@@ -86,15 +86,13 @@ void PlayerServer::clearClock()
     }
 }
 
-void PlayerServer::close()
+void PlayerServer::onBeforeClose()
 {
     clearClock();
-    Player::close();
 }
 
-void PlayerServer::update()
+void PlayerServer::onBeforeUpdate()
 {
-    Player::update();
     iterate();
 
     if (mHeartbeatCounter > mHeartbeatFrequency)

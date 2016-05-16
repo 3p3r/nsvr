@@ -107,11 +107,6 @@ bool Discoverer::open(const std::string& path)
     return success;
 }
 
-const std::string& Discoverer::getUri() const
-{
-    return mMediaUri;
-}
-
 gint Discoverer::getWidth() const
 {
     return mWidth;

@@ -10,8 +10,8 @@ class PlayerServer : public Player, protected Peer
 {
 public:
     PlayerServer(const std::string& address, short port);
-    virtual void        update() override;
-    virtual void        close() override;
+    virtual void        onBeforeUpdate() override;
+    virtual void        onBeforeClose() override;
 
 protected:
     virtual void        onMessage(const std::string& message) override;
