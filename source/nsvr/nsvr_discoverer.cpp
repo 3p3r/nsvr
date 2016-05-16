@@ -1,6 +1,8 @@
 #include "nsvr_internal.hpp"
 #include "nsvr/nsvr_discoverer.hpp"
 
+#include <gst/pbutils/gstdiscoverer.h>
+
 namespace nsvr
 {
 
@@ -14,7 +16,7 @@ bool Discoverer::open(const std::string& path)
         return false;
     }
 
-    if (!Internal::gstreamerInitialized())
+    if (!internal::gstreamerInitialized())
     {
         NSVR_LOG("Discoverer requires GStreamer to be initialized.");
         return false;
@@ -26,7 +28,7 @@ bool Discoverer::open(const std::string& path)
 
     try
     {
-        mMediaUri = Internal::processPath(path);
+        mMediaUri = internal::pathToUri(path);
         
         if (mMediaUri.empty())
         {

@@ -138,9 +138,6 @@ private:
     void queryDuration();
 
 protected:
-    //! @cond
-    friend          class Internal;
-    //! @endcond
     GstState        mState;                 //!< Current state of the player (playing, paused, etc.)
     GstMapInfo      mCurrentMapInfo;        //!< Mapped Buffer info, ONLY valid inside onFrame(...)
     GstSample       *mCurrentSample;        //!< Mapped Sample, ONLY valid inside onFrame(...)

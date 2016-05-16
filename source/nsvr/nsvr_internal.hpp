@@ -7,16 +7,13 @@
 #include <sstream>
 #include <iostream>
 
-#include <gio/gio.h>
-#include <gst/gst.h>
-#include <gst/net/net.h>
-#include <gst/gstregistry.h>
-#include <gst/app/gstappsink.h>
-#include <gst/pbutils/gstdiscoverer.h>
+namespace nsvr {
+namespace internal {
 
-namespace nsvr
-{
-
+/*!
+ * @struct BindToScope
+ * @brief  RAII utility that releases a typed C-style pointer.
+ */
 template<typename T>
 struct BindToScope
 {
@@ -27,20 +24,22 @@ struct BindToScope
 
 template< class T > struct no_ptr        { typedef T type; };
 template< class T > struct no_ptr<T*>    { typedef T type; };
-#define BIND_TO_SCOPE(var) BindToScope<\
-    no_ptr<decltype(var)>::type> scoped_##var(var);
 
-class Player;
-class Discoverer;
+//! convenience macro to bound a pointer to a scope
+#define BIND_TO_SCOPE(var) nsvr::internal::BindToScope<\
+    nsvr::internal::no_ptr<decltype(var)>::type> scoped_##var(var);
 
-class Internal
-{
-public:
-    static bool             gstreamerInitialized();
-    static std::string      processPath(const std::string& path);
-    static std::string              implode(const std::vector<std::string>& elements, const std::string& glue);
-    static std::vector<std::string> explode(const std::string &input, char separator);
-};
+//! Initializes GStreamer if it's not already. Returns true on success
+bool gstreamerInitialized();
+
+//! converts path to URI. no-op if a URI is passed
+std::string pathToUri(const std::string& path);
+
+//! Text-implode. Glues multiple strings together
+std::string implode(const std::vector<std::string>& elements, const std::string& glue);
+
+//! Text-explode. Separates a string with a separator
+std::vector<std::string> explode(const std::string &input, char separator);
 
 /*!
  * @fn    log
@@ -50,10 +49,10 @@ public:
  */
 void log(const std::string& msg);
 
-}
+}}
 
 /*! A convenience macro for nsvr::Logger. Input can be either string or stream
 constructed with << operator. NOTE: an end line will be automatically appended. */
 #ifndef NSVR_LOG
-#   define NSVR_LOG(buf) { std::stringstream ss; ss << "[NSVR]" << "[" << std::this_thread::get_id() << "] " << buf << std::endl; nsvr::log(ss.str()); }
+#   define NSVR_LOG(buf) { std::stringstream ss; ss << "[NSVR]" << "[" << std::this_thread::get_id() << "] " << buf << std::endl; nsvr::internal::log(ss.str()); }
 #endif

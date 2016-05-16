@@ -4,12 +4,17 @@
 #include "nsvr/nsvr_player.hpp"
 #include "nsvr/nsvr_peer.hpp"
 
+#include <gst/net/net.h>
+#include <gst/gstregistry.h>
+#include <gst/app/gstappsink.h>
+#include <gst/pbutils/gstdiscoverer.h>
+
 #ifdef _WIN32
 #   include <windows.h>
 #endif
 
-namespace nsvr
-{
+namespace nsvr {
+namespace internal {
 
 template<> BindToScope<gchar>::~BindToScope()                   { g_free(pointer); pointer = nullptr; }
 template<> BindToScope<GList>::~BindToScope()                   { gst_discoverer_stream_info_list_free(pointer); pointer = nullptr; }
@@ -22,21 +27,24 @@ template<> BindToScope<GstDiscovererInfo>::~BindToScope()       { gst_discoverer
 template<> BindToScope<GstNetTimeProvider>::~BindToScope()      { gst_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstDiscovererStreamInfo>::~BindToScope() { gst_discoverer_stream_info_unref(pointer); pointer = nullptr; }
 
-bool Internal::gstreamerInitialized()
+bool gstreamerInitialized()
 {
     GError *init_error = nullptr;
     BIND_TO_SCOPE(init_error);
 
     if (gst_is_initialized() == FALSE &&
-        gst_init_check(nullptr, nullptr, &init_error) == FALSE) {
-        g_debug("GStreamer failed to initialize: %s.", scoped_init_error.pointer->message);
+        gst_init_check(nullptr, nullptr, &init_error) == FALSE)
+    {
+        NSVR_LOG("GStreamer failed to initialize [" << init_error->message << "].");
         return false;
-    } else {
+    }
+    else
+    {
         return true;
     }
 }
 
-std::string Internal::implode(const std::vector<std::string>& elements, const std::string& glue)
+std::string implode(const std::vector<std::string>& elements, const std::string& glue)
 {
     switch (elements.size())
     {
@@ -52,7 +60,7 @@ std::string Internal::implode(const std::vector<std::string>& elements, const st
     }
 }
 
-std::vector<std::string> Internal::explode(const std::string &input, char separator)
+std::vector<std::string> explode(const std::string &input, char separator)
 {
     std::vector<std::string> ret;
     std::string::const_iterator cur = input.begin();
@@ -76,11 +84,11 @@ std::vector<std::string> Internal::explode(const std::string &input, char separa
     return ret;
 }
 
-std::string Internal::processPath(const std::string& path)
+std::string pathToUri(const std::string& path)
 {
     if (path.empty())
     {
-        g_debug("Cannot process an empty path.");
+        NSVR_LOG("Cannot process an empty path.");
         return "";
     }
 
@@ -109,4 +117,4 @@ void log(const std::string& msg)
     std::cout << msg;
 }
 
-}
+}}

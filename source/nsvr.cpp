@@ -20,14 +20,13 @@ void addPluginPath(const std::string& path)
 {
     if (path.empty())
     {
-        g_debug("Plug-in path supplied is empty.");
+        NSVR_LOG("Plug-in path supplied is empty.");
         return;
     }
 
-    if (!Internal::gstreamerInitialized())
+    if (!internal::gstreamerInitialized())
     {
-        g_debug("You are not able to add plug-in path. %s",
-            "GStreamer could not be initialized.");
+        NSVR_LOG("GStreamer could not be initialized.");
         return;
     }
 

@@ -3,6 +3,8 @@
 #include "nsvr/nsvr_player.hpp"
 #include "nsvr/nsvr_discoverer.hpp"
 
+#include <gst/app/gstappsink.h>
+
 namespace nsvr
 {
 
@@ -12,7 +14,7 @@ Player::Player()
 {
     reset();
 
-    if (!Internal::gstreamerInitialized())
+    if (!internal::gstreamerInitialized())
     {
         NSVR_LOG("Player requires GStreamer to be initialized.");
         return;
@@ -26,7 +28,7 @@ Player::~Player()
 
 bool Player::open(const std::string& path, gint width, gint height, const std::string& fmt)
 {
-    if (!Internal::gstreamerInitialized())
+    if (!internal::gstreamerInitialized())
     {
         NSVR_LOG("Player requires GStreamer to be initialized.");
         return false;

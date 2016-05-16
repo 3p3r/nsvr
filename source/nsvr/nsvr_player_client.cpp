@@ -1,6 +1,8 @@
 #include "nsvr_internal.hpp"
 #include "nsvr/nsvr_player_client.hpp"
 
+#include <gst/net/net.h>
+
 namespace nsvr
 {
 
@@ -29,7 +31,7 @@ void PlayerClient::onMessage(const std::string& message)
             GstState state      = GST_STATE_NULL;
             GstClockTime base   = 0;
 
-            for (const auto& cmd : Internal::explode(message.substr(2), '|'))
+            for (const auto& cmd : internal::explode(message.substr(2), '|'))
             {
                 if (cmd[0] == 't')
                     time = std::stod(cmd.substr(1));
