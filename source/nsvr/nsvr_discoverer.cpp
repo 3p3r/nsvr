@@ -1,53 +1,56 @@
-#include "nsvr/nsvr_discoverer.hpp"
 #include "nsvr_internal.hpp"
+#include "nsvr/nsvr_discoverer.hpp"
 
 namespace nsvr
 {
 
-Discoverer::Discoverer()
-{
-    Internal::reset(*this);
-}
-
-Discoverer::~Discoverer()
-{
-    Internal::reset(*this);
-}
-
 bool Discoverer::open(const std::string& path)
 {
-    bool success = false;
+    reset();
+
+    if (path.empty())
+    {
+        NSVR_LOG("Path given to Discoverer is empty.");
+        return false;
+    }
 
     if (!Internal::gstreamerInitialized())
     {
-        g_debug("You cannot open a media with nsvr. %s",
-                "GStreamer could not be initialized.");
-        return success;
+        NSVR_LOG("Discoverer requires GStreamer to be initialized.");
+        return false;
     }
+
+    auto    success = false;
+    auto    timeout = 10;
+    GError* errors  = nullptr;
 
     try
     {
-        Internal::reset(*this);
-        if (path.empty()) return success;
-
         mMediaUri = Internal::processPath(path);
-        if (mMediaUri.empty()) return success;
+        
+        if (mMediaUri.empty())
+        {
+            NSVR_LOG("Unable to convert " << path << " into a valid URI.");
+            return false;
+        }
 
-        auto discover_timeout = 10 * GST_SECOND;
-        if (GstDiscoverer *discoverer = gst_discoverer_new(discover_timeout, nullptr))
+        NSVR_LOG("About to discover media: " << getMediaUri() << " with timeout " << timeout << " seconds.");
+        BIND_TO_SCOPE(errors);
+
+        if (GstDiscoverer *discoverer = gst_discoverer_new(timeout * GST_SECOND, &errors))
         {
             BIND_TO_SCOPE(discoverer);
-            if (GstDiscovererInfo *info = gst_discoverer_discover_uri(discoverer, mMediaUri.c_str(), nullptr))
+            if (GstDiscovererInfo *info = gst_discoverer_discover_uri(discoverer, mMediaUri.c_str(), &errors))
             {
                 BIND_TO_SCOPE(info);
-                if (gst_discoverer_info_get_result(scoped_info.pointer) == GST_DISCOVERER_OK)
+                if (gst_discoverer_info_get_result(info) == GST_DISCOVERER_OK)
                 {
                     if (GList *video_streams = gst_discoverer_info_get_video_streams(info))
                     {
                         mHasVideo = true;
                         BIND_TO_SCOPE(video_streams);
 
-                        for (GList *curr = scoped_video_streams.pointer; curr; curr = curr->next)
+                        for (GList *curr = video_streams; curr; curr = curr->next)
                         {
                             GstDiscovererStreamInfo *curr_sinfo = (GstDiscovererStreamInfo *)curr->data;
 
@@ -60,13 +63,15 @@ bool Discoverer::open(const std::string& path)
                             }
                         }
                     }
+                    else
+                        NSVR_LOG("No video streams found in " << getMediaUri() << ".");
 
                     if (GList *audio_streams = gst_discoverer_info_get_audio_streams(info))
                     {
                         mHasAudio = true;
                         BIND_TO_SCOPE(audio_streams);
 
-                        for (GList *curr = scoped_audio_streams.pointer; curr; curr = curr->next)
+                        for (GList *curr = audio_streams; curr; curr = curr->next)
                         {
                             GstDiscovererStreamInfo *curr_sinfo = (GstDiscovererStreamInfo *)curr->data;
 
@@ -77,17 +82,25 @@ bool Discoverer::open(const std::string& path)
                             }
                         }
                     }
+                    else
+                        NSVR_LOG("No audio streams found in " << getMediaUri() << ".");
 
                     mSeekable = gst_discoverer_info_get_seekable(info) != FALSE;
                     mDuration = gst_discoverer_info_get_duration(info) / gdouble(GST_SECOND);
                     success = true;
                 }
+                else
+                    NSVR_LOG("GstDiscovererResult is not GST_DISCOVERER_OK.");
             }
+            else
+                NSVR_LOG("Unable to constrcut GstDiscovererInfo [" << errors->message << "].");
         }
+        else
+            NSVR_LOG("Unable to constrcut GstDiscoverer [" << errors->message << "].");
     }
     catch (...)
     {
-        g_debug("Discoverer was unable to proceed due to exception. Are you missing binaries?");
+        NSVR_LOG("Discoverer was unable to proceed due to an unknwon exception.");
         success = false;
     }
 
@@ -142,6 +155,27 @@ guint Discoverer::getSampleRate() const
 guint Discoverer::getBitRate() const
 {
     return mBitRate;
+}
+
+const std::string& Discoverer::getMediaUri() const
+{
+    return mMediaUri;
+}
+
+void Discoverer::reset()
+{
+    if (!mMediaUri.empty())
+        mMediaUri.clear();
+
+    mWidth      = 0;
+    mHeight     = 0;
+    mFrameRate  = 0;
+    mHasAudio   = false;
+    mHasVideo   = false;
+    mSeekable   = false;
+    mDuration   = 0;
+    mSampleRate = 0;
+    mBitRate    = 0;
 }
 
 }

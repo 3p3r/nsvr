@@ -41,20 +41,6 @@ bool Internal::gstreamerInitialized()
     }
 }
 
-void Internal::reset(Discoverer& discoverer)
-{
-    discoverer.mMediaUri    = "";
-    discoverer.mWidth       = 0;
-    discoverer.mHeight      = 0;
-    discoverer.mFrameRate   = 0;
-    discoverer.mHasAudio    = false;
-    discoverer.mHasVideo    = false;
-    discoverer.mSeekable    = false;
-    discoverer.mDuration    = 0;
-    discoverer.mSampleRate  = 0;
-    discoverer.mBitRate     = 0;
-}
-
 void Internal::reset(Player& player)
 {
     player.mState         = GST_STATE_NULL;
