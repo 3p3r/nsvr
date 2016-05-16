@@ -45,6 +45,7 @@ void PlayerServer::setupClock()
     if ((mNetClock = gst_pipeline_get_clock(GST_PIPELINE(mPipeline))) &&
         (mNetProvider = GST_OBJECT(gst_net_time_provider_new(mNetClock, mClockAddress.c_str(), mClockPort))))
     {
+        gst_clock_set_timeout(mNetClock, 100 * GST_MSECOND);
         adjustClock();
     }
 }

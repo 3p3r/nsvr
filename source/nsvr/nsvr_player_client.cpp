@@ -77,6 +77,7 @@ void PlayerClient::setupClock()
     if (GstClock *net_clock = gst_net_client_clock_new(nullptr, mClockAddress.c_str(), mClockPort, mBaseTime))
     {
         mNetClock = net_clock;
+        gst_clock_set_timeout(mNetClock, 100 * GST_MSECOND);
         
         gst_pipeline_use_clock(GST_PIPELINE(mPipeline), net_clock);
         gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
