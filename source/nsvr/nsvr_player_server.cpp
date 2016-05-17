@@ -146,9 +146,12 @@ void PlayerServer::onBeforeUpdate()
     {
         if (getState() != GST_STATE_READY)
             stop();
-        else
+        else if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(mPipeline)))
         {
-            auto time_diff = getTime() - mPendingSeek;
+            BIND_TO_SCOPE(clock);
+
+            auto time_curr = (gst_clock_get_time(clock) - gst_element_get_base_time(mPipeline)) / gdouble(GST_SECOND);
+            auto time_diff = time_curr - mPendingSeek;
             auto time_base = gst_element_get_base_time(mPipeline) + GstClockTime(time_diff * GST_SECOND);
 
             gst_element_set_base_time(mPipeline, time_base);
