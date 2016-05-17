@@ -65,9 +65,11 @@ void PlayerServer::onState(GstState old_state)
 {
     auto new_state = queryState();
 
-    if (new_state == GST_STATE_PAUSED)
+    if (old_state != GST_STATE_NULL && new_state == GST_STATE_READY)
+        clearClock(); // this happens when stop() is called
+    else if (new_state == GST_STATE_PAUSED)
         mPendingStateSeek = getTime();
-    else if (mPendingStateSeek >= 0.)
+    else if (old_state == GST_STATE_PAUSED && mPendingStateSeek >= 0.)
     {
         setTime(mPendingStateSeek);
         mPendingStateSeek = -1.;
@@ -146,8 +148,7 @@ void PlayerServer::onBeforeUpdate()
             stop();
         else
         {
-            auto current_time = getTime();
-            auto time_diff = current_time - mPendingSeek;
+            auto time_diff = getTime() - mPendingSeek;
             auto time_base = gst_element_get_base_time(mPipeline) + GstClockTime(time_diff * GST_SECOND);
 
             gst_element_set_base_time(mPipeline, time_base);
