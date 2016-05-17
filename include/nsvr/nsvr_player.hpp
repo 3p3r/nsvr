@@ -60,8 +60,11 @@ public:
     //! sets state of the player (GST_STATE_PAUSED, etc.)
     void            setState(GstState state);
 
-    //! answers the current state of the player (GST_STATE_PAUSED, etc.)
-    GstState        getState(bool cached = true) const;
+    //! answers the current cached state of the player (GST_STATE_PAUSED, etc.)
+    GstState        getState() const;
+
+    //! answers the current actual state of the player (GST_STATE_PAUSED, etc.)
+    GstState        queryState() const;
 
     //! sets if the player should loop playback in the end (true) or not (false)
     void            setLoop(bool on);

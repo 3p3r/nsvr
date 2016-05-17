@@ -44,7 +44,7 @@ void PlayerServer::setTime(gdouble time)
     if (mPendingSeek != time)
         mPendingSeek = CLAMP(time, 0, getDuration());
 
-    mPendingState = getState(false);
+    mPendingState = queryState();
 }
 
 void PlayerServer::setupClock()
@@ -63,7 +63,7 @@ void PlayerServer::setupClock()
 
 void PlayerServer::onState(GstState old_state)
 {
-    auto new_state = getState(false);
+    auto new_state = queryState();
 
     if (new_state == GST_STATE_PAUSED)
         mPendingStateSeek = getTime();

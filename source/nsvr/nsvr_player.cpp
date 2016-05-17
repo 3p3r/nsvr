@@ -192,18 +192,17 @@ void Player::setState(GstState state)
         onState(old_state);
 }
 
-GstState Player::getState(bool cached /* = true */) const
+GstState Player::getState() const
+{
+    return mState;
+}
+
+GstState Player::queryState() const
 {
     GstState state = mState;
-
-    if (!cached)
-    {
-        unsigned timeout = 10;
-        if (gst_element_get_state(mPipeline, &state, nullptr, timeout * GST_SECOND) == GST_STATE_CHANGE_FAILURE)
-        {
-            NSVR_LOG("Failed to obtain state in specified timeout.");
-        }
-    }
+    
+    if (gst_element_get_state(mPipeline, &state, nullptr, GST_SECOND) == GST_STATE_CHANGE_FAILURE)
+        NSVR_LOG("Failed to obtain state in specified timeout.");
 
     return state;
 }
