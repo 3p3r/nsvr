@@ -183,10 +183,13 @@ void Player::close()
 
 void Player::setState(GstState state)
 {
+    g_return_if_fail(mPipeline != nullptr);
+
     onBeforeSetState();
 
-    g_return_if_fail(mPipeline != nullptr);
-    gst_element_set_state(mPipeline, state);
+    GstState old_state = getState();
+    if (gst_element_set_state(mPipeline, state) == GST_STATE_CHANGE_SUCCESS)
+        onState(old_state);
 }
 
 GstState Player::getState(bool cached /* = true */) const

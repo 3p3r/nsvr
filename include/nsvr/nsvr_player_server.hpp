@@ -27,6 +27,7 @@ protected:
     virtual void        onBeforeUpdate() override;
     virtual void        onBeforeClose() override;
     virtual void        setupClock() override;
+    virtual void        onState(GstState old) override;
     void                dispatchHeartbeat();
     void                adjustClock();
     void                clearClock();
@@ -36,6 +37,7 @@ private:
     GstClock*           mNetClock;
     GstObject*          mNetProvider;
     GstClockTime        mClockOffset;
+    gdouble             mPendingStateSeek;
     gdouble             mPendingSeek;
     GstState            mPendingState;
     unsigned            mHeartbeatCounter;

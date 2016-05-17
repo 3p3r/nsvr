@@ -49,8 +49,8 @@ private:
         CinderPlayer();
         gl::TextureRef  mTexture;
         virtual void    onFrame(guchar* buf, gsize size) const override;
-        virtual void    onState(GstState old) const override;
-        virtual void    onStreamEnd() const override;
+        virtual void    onState(GstState old) override;
+        virtual void    onStreamEnd() override;
         virtual void    onMessage(const std::string& message) override;
     };
 
@@ -70,7 +70,7 @@ void BasicServer::CinderPlayer::onFrame(guchar* buf, gsize size) const
         mTexture->update(buf, GL_RGBA, GL_UNSIGNED_BYTE, 0, getWidth(), getHeight());
 }
 
-void BasicServer::CinderPlayer::onStreamEnd() const
+void BasicServer::CinderPlayer::onStreamEnd()
 {
     std::cout << "EOS event received from GStreamer." << std::endl;
 }
@@ -83,8 +83,9 @@ void BasicServer::CinderPlayer::onMessage(const std::string& message)
         std::cout << "Message: " << message << std::endl;
 }
 
-void BasicServer::CinderPlayer::onState(GstState old) const
+void BasicServer::CinderPlayer::onState(GstState old)
 {
+    PlayerServer::onState(old);
     std::cout << "GStreamer state changed from: " << old << " to: " << getState() << std::endl;
 }
 

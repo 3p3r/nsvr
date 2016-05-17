@@ -98,10 +98,10 @@ protected:
     virtual void    onFrame(guchar* buf, gsize size) const {}
 
     //! State change event, propagated by the pipeline. Old state passed in, obtain new state with getState()
-    virtual void    onState(GstState old) const {}
+    virtual void    onState(GstState old) {}
 
     //! Called on end of the stream. Playback is finished at this point
-    virtual void    onStreamEnd() const {}
+    virtual void    onStreamEnd() {}
 
     //! Called by whenever pipeline clock needs to be (re)constructed
     virtual void    setupClock() {}

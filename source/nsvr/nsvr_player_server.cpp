@@ -14,6 +14,7 @@ PlayerServer::PlayerServer(const std::string& address, short port)
     , mHeartbeatCounter(0)
     , mHeartbeatFrequency(30)
     , mPendingSeek(-1.)
+    , mPendingStateSeek(-1.)
     , mPendingState(GST_STATE_NULL)
 {
     if (defaultMulticastGroupEnabled() &&
@@ -57,6 +58,19 @@ void PlayerServer::setupClock()
     {
         gst_clock_set_timeout(mNetClock, 100 * GST_MSECOND);
         adjustClock();
+    }
+}
+
+void PlayerServer::onState(GstState old_state)
+{
+    auto new_state = getState(false);
+
+    if (new_state == GST_STATE_PAUSED)
+        mPendingStateSeek = getTime();
+    else if (mPendingStateSeek >= 0.)
+    {
+        setTime(mPendingStateSeek);
+        mPendingStateSeek = -1.;
     }
 }
 
@@ -128,8 +142,8 @@ void PlayerServer::onBeforeUpdate()
 
     if (mPendingSeek >= 0.)
     {
-        if (getState() != GST_STATE_PAUSED)
-            pause();
+        if (getState() != GST_STATE_READY)
+            stop();
         else
         {
             auto current_time = getTime();
