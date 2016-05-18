@@ -37,6 +37,7 @@ private:
     GstClock*           mNetClock;
     GstObject*          mNetProvider;
     GstClockTime        mClockOffset;
+    GstClockTime        mPendingCurrentTime;
     gdouble             mPendingStateSeek;
     GstState            mPendingState;
     unsigned            mHeartbeatCounter;
