@@ -401,6 +401,10 @@ void Player::setTime(gdouble time)
         mSeekingLock = true;
         mPendingSeek = -1.;
     }
+    else
+    {
+        NSVR_LOG("Flushing seek operation failed.");
+    }
 }
 
 gdouble Player::getTime() const
@@ -487,7 +491,6 @@ void Player::reset()
     mDuration       = 0;
     mTime           = 0.;
     mVolume         = 1.;
-    mRate           = 1.;
     mPendingSeek    = -1.;
     mSeekingLock    = false;
     mBufferDirty    = false;

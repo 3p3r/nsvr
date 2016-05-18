@@ -156,7 +156,6 @@ private:
     mutable gdouble mDuration   = 0.;       //!< Duration of the media being played
     mutable gdouble mTime       = 0.;       //!< Current time of the media being played (current position)
     mutable gdouble mVolume     = 1.;       //!< Volume of the media being played
-    mutable gdouble mRate       = 1.;       //!< Rate of playback, negative number for reverse playback
 
     std::atomic<bool>   mBufferDirty;       //!< Atomic boolean, representing a new frame is ready by GStreamer
     bool                mLoop   = false;    //!< Flag, indicating whether the player is looping or not
