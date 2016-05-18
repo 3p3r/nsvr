@@ -20,6 +20,7 @@ SET( NSVR_HEADERS
   "${NSVR_INCLUDE}/nsvr/nsvr_player.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_player_client.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_player_server.hpp"
+  "${NSVR_INCLUDE}/nsvr/nsvr_packet_handler.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_discoverer.hpp" )
 
 SET( NSVR_SOURCES
@@ -28,6 +29,7 @@ SET( NSVR_SOURCES
   "${NSVR_SOURCE}/nsvr/nsvr_player.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_player_client.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_player_server.cpp"
+  "${NSVR_SOURCE}/nsvr/nsvr_packet_handler.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_internal.hpp"
   "${NSVR_SOURCE}/nsvr/nsvr_internal.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_discoverer.cpp" )
