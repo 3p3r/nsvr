@@ -105,25 +105,28 @@ void BasicServer::setup()
 
 void BasicServer::keyDown(KeyEvent event)
 {
-    switch (event.getChar())
+    switch (event.getCode())
     {
-    case 'p': case 'P':
-        mPlayer.getState() == GST_STATE_PLAYING ? mPlayer.pause() : mPlayer.play();
+    case event.KEY_p:
+        mPlayer.queryState() == GST_STATE_PLAYING ? mPlayer.pause() : mPlayer.play();
         break;
-    case 's': case 'S':
+    case event.KEY_s:
         mPlayer.stop();
         break;
-    case 'm': case 'M':
+    case event.KEY_m:
         mPlayer.setMute(!mPlayer.getMute());
         break;
-    case 'l': case 'L':
+    case event.KEY_l:
         mPlayer.setLoop(!mPlayer.getLoop());
         break;
-    case 'c': case 'C':
+    case event.KEY_c:
         mPlayer.close();
         break;
-    case 'f': case 'F':
+    case event.KEY_f:
         setFullScreen(!isFullScreen());
+        break;
+    case event.KEY_x:
+        listModules();
         break;
     default:
         break;

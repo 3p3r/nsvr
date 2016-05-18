@@ -35,4 +35,7 @@ bool defaultMulticastGroupEnabled();
 //! Sets if default multicast is enabled (default: yes)
 void enableDefaultMulticastGroup(bool on = true);
 
+//! Utility that prints all loaded DLLs on Windows
+void listModules();
+
 }

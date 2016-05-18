@@ -3,6 +3,11 @@
 
 #include <memory>
 
+#ifdef _WIN32
+#    include <windows.h>
+#    include <psapi.h>
+#endif // _WIN32
+
 namespace {
 
 struct DefaultMulticastGroup
@@ -98,6 +103,38 @@ void enableDefaultMulticastGroup(bool on /*= true*/)
 {
     static auto handle = getDefaultMulticastGroup();
     handle->enabled = on;
+}
+
+void listModules()
+{
+#ifdef _WIN32
+    NSVR_LOG("******************* START MODULES");
+
+    HMODULE hMods[2056] {0};
+    DWORD   cbNeeded    {0};
+
+    if (::EnumProcessModules(
+        ::GetCurrentProcess(),
+        hMods,
+        sizeof(hMods),
+        &cbNeeded))
+    {
+        for (int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+        {
+            CHAR szModName[MAX_PATH] {0};
+            if (GetModuleFileNameExA(
+                ::GetCurrentProcess(),
+                hMods[i],
+                szModName,
+                sizeof(szModName) / sizeof(szModName[0])))
+            {
+                NSVR_LOG(szModName);
+            }
+        }
+    }
+
+    NSVR_LOG("******************* END MODULES");
+#endif
 }
 
 }
