@@ -61,7 +61,7 @@ void PlayerServer::setupClock()
     }
 }
 
-void PlayerServer::onState(GstState old_state)
+void PlayerServer::onStateChanged(GstState old_state)
 {
     auto new_state = queryState();
 

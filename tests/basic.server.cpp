@@ -48,8 +48,8 @@ private:
     public:
         CinderPlayer();
         gl::TextureRef  mTexture;
-        virtual void    onFrame(guchar* buf, gsize size) const override;
-        virtual void    onState(GstState old) override;
+        virtual void    onVideoFrame(guchar* buf, gsize size) const override;
+        virtual void    onStateChanged(GstState old) override;
         virtual void    onStreamEnd() override;
         virtual void    onMessage(const std::string& message) override;
     };
@@ -64,7 +64,7 @@ BasicServer::CinderPlayer::CinderPlayer()
     : PlayerServer("127.0.0.1", 5000)
 {}
 
-void BasicServer::CinderPlayer::onFrame(guchar* buf, gsize size) const
+void BasicServer::CinderPlayer::onVideoFrame(guchar* buf, gsize size) const
 {
     if (mTexture)
         mTexture->update(buf, GL_RGBA, GL_UNSIGNED_BYTE, 0, getWidth(), getHeight());
@@ -83,9 +83,9 @@ void BasicServer::CinderPlayer::onMessage(const std::string& message)
         std::cout << "Message: " << message << std::endl;
 }
 
-void BasicServer::CinderPlayer::onState(GstState old)
+void BasicServer::CinderPlayer::onStateChanged(GstState old)
 {
-    PlayerServer::onState(old);
+    PlayerServer::onStateChanged(old);
     std::cout << "GStreamer state changed from: " << old << " to: " << getState() << std::endl;
 }
 

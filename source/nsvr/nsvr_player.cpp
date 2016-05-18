@@ -185,11 +185,11 @@ void Player::setState(GstState state)
 {
     g_return_if_fail(mPipeline != nullptr);
 
-    onBeforeSetState();
+    onBeforeSetState(state);
 
     GstState old_state = getState();
     if (gst_element_set_state(mPipeline, state) == GST_STATE_CHANGE_SUCCESS)
-        onState(old_state);
+        onStateChanged(old_state);
 }
 
 GstState Player::getState() const
@@ -269,7 +269,7 @@ void Player::update()
 
                         if (old_state != mState)
                         {
-                            onState(old_state);
+                            onStateChanged(old_state);
                         }
                     }
                 }
@@ -349,7 +349,7 @@ void Player::update()
 
     if (mBufferDirty)
     {
-        onFrame(
+        onVideoFrame(
             mCurrentMapInfo.data,
             mCurrentMapInfo.size);
 

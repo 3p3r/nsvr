@@ -16,7 +16,7 @@ namespace nsvr
  * @note    API of this class is not MT safe. Designed to be exclusively
  *          used in one thread and embedded in other game engines.
  * @details To obtain video frames, you need to subclass and override
- *          onFrame(...) method. Same goes for receiving events. To get
+ *          onVideoFrame(...) method. Same goes for receiving events. To get
  *          event callbacks, on[name of function] should be overridden.
  */
 class Player
@@ -98,10 +98,10 @@ public:
 
 protected:
     //! Video frame callback, video buffer data and its size are passed in
-    virtual void    onFrame(guchar* buf, gsize size) const {}
+    virtual void    onVideoFrame(guchar* buf, gsize size) const {}
 
     //! State change event, propagated by the pipeline. Old state passed in, obtain new state with getState()
-    virtual void    onState(GstState old) {}
+    virtual void    onStateChanged(GstState old) {}
 
     //! Called on end of the stream. Playback is finished at this point
     virtual void    onStreamEnd() {}
@@ -121,8 +121,8 @@ protected:
     //! Called before update() is called
     virtual void    onBeforeUpdate() {}
 
-    //! Called before update() is called
-    virtual void    onBeforeSetState() {}
+    //! Called before setState() is called. target state is passed in.
+    virtual void    onBeforeSetState(GstState state) {}
 
 private:
     //! Resets internal state of the Player (does not free any memories!)
@@ -142,12 +142,13 @@ private:
 
 protected:
     GstState        mState;                 //!< Current state of the player (playing, paused, etc.)
-    GstMapInfo      mCurrentMapInfo;        //!< Mapped Buffer info, ONLY valid inside onFrame(...)
-    GstSample       *mCurrentSample;        //!< Mapped Sample, ONLY valid inside onFrame(...)
-    GstBuffer       *mCurrentBuffer;        //!< Mapped Buffer, ONLY valid inside onFrame(...)
+    GstMapInfo      mCurrentMapInfo;        //!< Mapped Buffer info, ONLY valid inside onVideoFrame(...)
+    GstSample       *mCurrentSample;        //!< Mapped Sample, ONLY valid inside onVideoFrame(...)
+    GstBuffer       *mCurrentBuffer;        //!< Mapped Buffer, ONLY valid inside onVideoFrame(...)
     GstElement      *mPipeline;             //!< GStreamer pipeline (play-bin) object
     GstBus          *mGstBus;               //!< Bus associated with mPipeline
 
+private:
     mutable gint    mWidth      = 0;        //!< Width of the video being played. Valid after a call to open(...)
     mutable gint    mHeight     = 0;        //!< Height of the video being played. Valid after a call to open(...)
     mutable gdouble mDuration   = 0.;       //!< Duration of the media being played

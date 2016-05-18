@@ -27,7 +27,7 @@ protected:
     virtual void        onBeforeUpdate() override;
     virtual void        onBeforeClose() override;
     virtual void        setupClock() override;
-    virtual void        onState(GstState old) override;
+    virtual void        onStateChanged(GstState old) override;
     void                dispatchHeartbeat();
     void                adjustClock();
     void                clearClock();

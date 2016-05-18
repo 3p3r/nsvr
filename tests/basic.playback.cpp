@@ -49,8 +49,8 @@ private:
 
     public:
         gl::TextureRef  mTexture;
-        virtual void    onFrame(guchar* buf, gsize size) const override;
-        virtual void    onState(GstState old) override;
+        virtual void    onVideoFrame(guchar* buf, gsize size) const override;
+        virtual void    onStateChanged(GstState old) override;
         virtual void    onStreamEnd() override;
     };
 
@@ -60,7 +60,7 @@ private:
     CinderPlayer        mPlayer;
 };
 
-void BasicPlayback::CinderPlayer::onFrame(guchar* buf, gsize size) const
+void BasicPlayback::CinderPlayer::onVideoFrame(guchar* buf, gsize size) const
 {
     if (mTexture)
         mTexture->update(buf, GL_RGBA, GL_UNSIGNED_BYTE, 0, getWidth(), getHeight());
@@ -71,7 +71,7 @@ void BasicPlayback::CinderPlayer::onStreamEnd()
     std::cout << "EOS event received from GStreamer." << std::endl;
 }
 
-void BasicPlayback::CinderPlayer::onState(GstState old)
+void BasicPlayback::CinderPlayer::onStateChanged(GstState old)
 {
     std::cout << "GStreamer state changed from: " << old << " to: " << getState() << std::endl;
 }
