@@ -34,7 +34,7 @@ void PlayerClient::onMessage(const std::string& message)
             gdouble volume      = 0;
             bool mute           = true;
             GstState state      = GST_STATE_NULL;
-            GstClockTime base   = 0;
+            GstClockTime base   = GST_CLOCK_TIME_NONE;
 
             for (const auto& cmd : internal::explode(message.substr(2), '|'))
             {
@@ -56,10 +56,10 @@ void PlayerClient::onMessage(const std::string& message)
             if (getVolume() != volume)
                 setVolume(volume);
             
-            if (mPipeline != nullptr && gst_element_get_base_time(mPipeline) != base)
+            if (mPipeline == nullptr || gst_element_get_base_time(mPipeline) != base)
                 mBaseTime = base;
 
-            if (mBaseTime == 0 && getState() != state)
+            if (mBaseTime == 0 && queryState() != state)
                 setState(state);
         }
     }
@@ -96,9 +96,15 @@ void PlayerClient::onBeforeUpdate()
     if (mBaseTime != 0)
     {
         if (getState() != GST_STATE_READY)
-            stop();
+        {
+            if (gst_element_set_state(mPipeline, GST_STATE_READY) == GST_STATE_CHANGE_FAILURE)
+                NSVR_LOG("Client failed to put pipeline into READY state for a pending base.")
+        }
         else
+        {
+            NSVR_LOG("Client receieved a new base time.");
             setupClock();
+        }
     }
 }
 
