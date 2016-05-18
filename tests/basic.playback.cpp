@@ -5,28 +5,7 @@
 #include "cinder/gl/gl.h"
 
 #include "nsvr.hpp"
-
-// simple BGRA to RGBA shader
-namespace {
-const std::string VERTEX_SHADER = "#version 330 core\n"
-    "in vec4 ciPosition;\n"
-    "in vec2 ciTexCoord0;\n"
-    "uniform mat4 ciModelViewProjection;\n"
-    "smooth out vec2 vTexCoord;\n"
-    "void main() {\n"
-    "  gl_Position = ciModelViewProjection * ciPosition;\n"
-    "  vTexCoord = vec2(ciTexCoord0.x, 1.0 - ciTexCoord0.y);\n"
-    "}";
-
-const std::string FRAG_SHADER = "#version 330 core\n"
-    "uniform sampler2D uTex0;\n"
-    "smooth in vec2 vTexCoord;\n"
-    "out vec4 fColor;\n"
-    "void main()\n"
-    "{\n"
-    "  fColor = texture( uTex0, vTexCoord ).bgra;\n"
-    "}\n";
-}
+#include "bgra2rgba.shader"
 
 using namespace ci;
 using namespace ci::app;
@@ -92,41 +71,46 @@ void BasicPlayback::setup()
 
 void BasicPlayback::keyDown(KeyEvent event)
 {
-    switch (event.getChar())
+    switch (event.getCode())
     {
-    case 'p': case 'P':
-        mPlayer.getState() == GST_STATE_PLAYING ? mPlayer.pause() : mPlayer.play();
+    case event.KEY_p:
+        mPlayer.queryState() == GST_STATE_PLAYING ? mPlayer.pause() : mPlayer.play();
         break;
-    case 's': case 'S':
+    case event.KEY_s:
         mPlayer.stop();
         break;
-    case 'm': case 'M':
+    case event.KEY_m:
         mPlayer.setMute(!mPlayer.getMute());
         break;
-    case 'l': case 'L':
+    case event.KEY_l:
         mPlayer.setLoop(!mPlayer.getLoop());
         break;
-    case 'c': case 'C':
+    case event.KEY_c:
         mPlayer.close();
         break;
-    case 'f': case 'F':
+    case event.KEY_f:
         setFullScreen(!isFullScreen());
+        break;
+    case event.KEY_x:
+        listModules();
+        break;
+    case event.KEY_ESCAPE:
+        quit();
+        break;
+    case event.KEY_UP:
+        mPlayer.setVolume(mPlayer.getVolume() + .2);
+        break;
+    case event.KEY_DOWN:
+        mPlayer.setVolume(mPlayer.getVolume() - .2);
+        break;
+    case event.KEY_RIGHT:
+        mPlayer.setTime(mPlayer.getTime() + 5.);
+        break;
+    case event.KEY_LEFT:
+        mPlayer.setTime(mPlayer.getTime() - 5.);
         break;
     default:
         break;
-    }
-
-    if (event.getCode() == event.KEY_ESCAPE)
-        quit();
-
-    if (event.getCode() == event.KEY_UP) {
-        mPlayer.setVolume(mPlayer.getVolume() + .2);
-    } else if (event.getCode() == event.KEY_DOWN) {
-        mPlayer.setVolume(mPlayer.getVolume() - .2);
-    } else if (event.getCode() == event.KEY_LEFT) {
-        mPlayer.setTime( mPlayer.getTime() - 5. );
-    } else if (event.getCode() == event.KEY_RIGHT) {
-        mPlayer.setTime( mPlayer.getTime() + 5. );
     }
 }
 
