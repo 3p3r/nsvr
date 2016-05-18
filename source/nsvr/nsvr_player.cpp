@@ -123,24 +123,26 @@ bool Player::open(const std::string& path, gint width, gint height, const std::s
         GstState state;
         unsigned timeout = 10;
 
-        setState(GST_STATE_READY);
-
-        if (gst_element_get_state(mPipeline, &state, nullptr, timeout * GST_SECOND) == GST_STATE_CHANGE_FAILURE ||
-            state != GST_STATE_READY)
+        if (gst_element_set_state(mPipeline, GST_STATE_READY) != GST_STATE_CHANGE_SUCCESS)
         {
-            close();
-            NSVR_LOG("Failed to put pipeline in READY state.");
-            return false;
+            if (gst_element_get_state(mPipeline, &state, nullptr, timeout * GST_SECOND) == GST_STATE_CHANGE_FAILURE ||
+                state != GST_STATE_READY)
+            {
+                close();
+                NSVR_LOG("Failed to put pipeline in READY state.");
+                return false;
+            }
         }
 
-        setState(GST_STATE_PAUSED);
-
-        if (gst_element_get_state(mPipeline, &state, nullptr, timeout * GST_SECOND) == GST_STATE_CHANGE_FAILURE ||
-            state != GST_STATE_PAUSED)
+        if (gst_element_set_state(mPipeline, GST_STATE_PAUSED) != GST_STATE_CHANGE_SUCCESS)
         {
-            close();
-            NSVR_LOG("Failed to put pipeline in PAUSE state.");
-            return false;
+            if (gst_element_get_state(mPipeline, &state, nullptr, timeout * GST_SECOND) == GST_STATE_CHANGE_FAILURE ||
+                state != GST_STATE_PAUSED)
+            {
+                close();
+                NSVR_LOG("Failed to put pipeline in PAUSE state.");
+                return false;
+            }
         }
 
         mDuration = discoverer.getDuration();

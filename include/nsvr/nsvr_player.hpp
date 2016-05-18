@@ -147,6 +147,8 @@ protected:
     GstBuffer       *mCurrentBuffer;        //!< Mapped Buffer, ONLY valid inside onVideoFrame(...)
     GstElement      *mPipeline;             //!< GStreamer pipeline (play-bin) object
     GstBus          *mGstBus;               //!< Bus associated with mPipeline
+    mutable gdouble mPendingSeek;           //!< Value of the seek operation pending to be executed
+    mutable bool    mSeekingLock;           //!< Boolean flag, indicating a seek operation is pending to be executed
 
 private:
     mutable gint    mWidth      = 0;        //!< Width of the video being played. Valid after a call to open(...)
@@ -157,8 +159,6 @@ private:
     mutable gdouble mRate       = 1.;       //!< Rate of playback, negative number for reverse playback
 
     std::atomic<bool>   mBufferDirty;       //!< Atomic boolean, representing a new frame is ready by GStreamer
-    mutable gdouble     mPendingSeek;       //!< Value of the seek operation pending to be executed
-    mutable bool        mSeekingLock;       //!< Boolean flag, indicating a seek operation is pending to be executed
     bool                mLoop   = false;    //!< Flag, indicating whether the player is looping or not
     bool                mMute   = false;    //!< Flag, indicating whether the player is muted or not
 };

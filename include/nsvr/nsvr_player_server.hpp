@@ -21,15 +21,15 @@ public:
     unsigned            getHeartbeatFrequency() const;
 
     //! Override of Player's setTime to perform network seek
-    virtual void        setTime(gdouble time);
+    virtual void        setTime(gdouble time) override;
 
 protected:
     virtual void        onBeforeUpdate() override;
     virtual void        onBeforeClose() override;
     virtual void        setupClock() override;
-    virtual void        onStateChanged(GstState old) override;
+    virtual void        onBeforeSetState(GstState) override;
+    virtual void        onStateChanged(GstState) override;
     void                dispatchHeartbeat();
-    void                adjustClock();
     void                clearClock();
 
 private:
@@ -38,7 +38,6 @@ private:
     GstObject*          mNetProvider;
     GstClockTime        mClockOffset;
     gdouble             mPendingStateSeek;
-    gdouble             mPendingSeek;
     GstState            mPendingState;
     unsigned            mHeartbeatCounter;
     unsigned            mHeartbeatFrequency;
