@@ -64,7 +64,7 @@ public:
     GstState        getState() const;
 
     //! answers the current actual state of the player (GST_STATE_PAUSED, etc.)
-    GstState        queryState() const;
+    GstState        queryState();
 
     //! sets if the player should loop playback in the end (true) or not (false)
     void            setLoop(bool on);

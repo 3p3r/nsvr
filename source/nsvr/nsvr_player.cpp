@@ -199,14 +199,12 @@ GstState Player::getState() const
     return mState;
 }
 
-GstState Player::queryState() const
+GstState Player::queryState()
 {
-    GstState state = mState;
-    
-    if (gst_element_get_state(mPipeline, &state, nullptr, GST_SECOND) == GST_STATE_CHANGE_FAILURE)
+    if (gst_element_get_state(mPipeline, &mState, nullptr, GST_SECOND) == GST_STATE_CHANGE_FAILURE)
         NSVR_LOG("Failed to obtain state in specified timeout.");
 
-    return state;
+    return mState;
 }
 
 void Player::stop()
