@@ -3,7 +3,6 @@
 #include <mutex>
 #include <string>
 #include <vector>
-#include <thread>
 #include <sstream>
 #include <iostream>
 
@@ -54,5 +53,5 @@ void log(const std::string& msg);
 /*! A convenience macro for nsvr::Logger. Input can be either string or stream
 constructed with << operator. NOTE: an end line will be automatically appended. */
 #ifndef NSVR_LOG
-#   define NSVR_LOG(buf) { std::stringstream ss; ss << "[NSVR]" << "[" << std::this_thread::get_id() << "] " << buf << std::endl; nsvr::internal::log(ss.str()); }
+#   define NSVR_LOG(buf) { std::stringstream ss; ss << "[NSVR]" << "[" << g_thread_self() << "] " << buf << std::endl; nsvr::internal::log(ss.str()); }
 #endif
