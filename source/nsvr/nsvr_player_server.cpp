@@ -1,3 +1,4 @@
+#include "nsvr/nsvr_packet_handler.hpp"
 #include "nsvr_internal.hpp"
 #include "nsvr.hpp"
 
@@ -85,21 +86,14 @@ void PlayerServer::dispatchHeartbeat()
 {
     g_return_if_fail(mPipeline != nullptr);
 
-    std::stringstream dispatch_cmd;
+    Packet packet;
+    packet.time     = getTime();
+    packet.volume   = getVolume();
+    packet.mute     = getMute() ? TRUE : FALSE;
+    packet.state    = getState();
+    packet.base     = gst_element_get_base_time(mPipeline);
 
-    dispatch_cmd << "sh";
-    dispatch_cmd << "|";
-    dispatch_cmd << "t" << getTime();
-    dispatch_cmd << "|";
-    dispatch_cmd << "v" << getVolume();
-    dispatch_cmd << "|";
-    dispatch_cmd << "m" << getMute() ? TRUE : FALSE;
-    dispatch_cmd << "|";
-    dispatch_cmd << "s" << getState();
-    dispatch_cmd << "|";
-    dispatch_cmd << "b" << gst_element_get_base_time(mPipeline);
-
-    send(dispatch_cmd.str());
+    send(PacketHandler::serialize(packet));
 }
 
 void PlayerServer::clearClock()

@@ -1,3 +1,4 @@
+#include "nsvr/nsvr_packet_handler.hpp"
 #include "nsvr_internal.hpp"
 #include "nsvr.hpp"
 
@@ -22,46 +23,24 @@ PlayerClient::PlayerClient(const std::string& address, short port)
 
 void PlayerClient::onMessage(const std::string& message)
 {
-    if (message.empty() || message[0] == 'c')
+    if (message.empty())
         return;
 
-    if (message.size() > 1 && message[0] == 's')
+    Packet packet;
+
+    if (PacketHandler::parse(message, packet))
     {
-        // server heartbeat received
-        if (message[1] == 'h')
-        {
-            gdouble time        = 0;
-            gdouble volume      = 0;
-            bool mute           = true;
-            GstState state      = GST_STATE_NULL;
-            GstClockTime base   = GST_CLOCK_TIME_NONE;
+        if (getMute() != (packet.mute != FALSE))
+            setMute(packet.mute != FALSE);
 
-            for (const auto& cmd : internal::explode(message.substr(2), '|'))
-            {
-                if (cmd[0] == 't')
-                    time = std::stod(cmd.substr(1));
-                else if (cmd[0] == 'v')
-                    volume = std::stod(cmd.substr(1));
-                else if (cmd[0] == 'm')
-                    mute = (std::stoi(cmd.substr(1)) != FALSE);
-                else if (cmd[0] == 's')
-                    state = static_cast<GstState>(std::stoi(cmd.substr(1)));
-                else if (cmd[0] == 'b')
-                    base = std::stoull(cmd.substr(1));
-            }
+        if (getVolume() != packet.volume)
+            setVolume(packet.volume);
 
-            if (getMute() != mute)
-                setMute(mute);
+        if (mPipeline == nullptr || gst_element_get_base_time(mPipeline) != packet.base)
+            mBaseTime = packet.base;
 
-            if (getVolume() != volume)
-                setVolume(volume);
-            
-            if (mPipeline == nullptr || gst_element_get_base_time(mPipeline) != base)
-                mBaseTime = base;
-
-            if (mBaseTime == 0 && queryState() != state)
-                setState(state);
-        }
+        if (mBaseTime == 0 && queryState() != packet.state)
+            setState(packet.state);
     }
 }
 
