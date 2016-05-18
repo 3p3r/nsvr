@@ -41,9 +41,7 @@ unsigned PlayerServer::getHeartbeatFrequency() const
 
 void PlayerServer::setTime(gdouble time)
 {
-    if (mPendingSeek != time)
-        mPendingSeek = CLAMP(time, 0, getDuration());
-
+    mPendingSeek = CLAMP(time, 0, getDuration());
     mPendingState = queryState();
 }
 
