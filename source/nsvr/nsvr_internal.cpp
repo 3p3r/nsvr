@@ -114,7 +114,7 @@ void log(const std::string& msg)
 #ifdef _WIN32
     ::OutputDebugStringA(msg.c_str());
 #endif
-    std::cout << msg;
+    g_debug(msg.c_str());
 }
 
 }}
