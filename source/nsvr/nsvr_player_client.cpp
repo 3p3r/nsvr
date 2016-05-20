@@ -13,12 +13,13 @@ PlayerClient::PlayerClient(const std::string& address, short port)
     , mClockPort(port)
     , mNetClock(nullptr)
 {
-    if (defaultMulticastGroupEnabled() &&
-        !connect(getDefaultMulticastIp(), getDefaultMulticastPort()))
+    if (!connect(address, port))
     {
-        NSVR_LOG("Player was unable to join the default multicast group.");
+        NSVR_LOG("Client was unable to connect to server at construction.");
         return;
     }
+
+    sendToServer("nsvr");
 }
 
 void PlayerClient::onMessage(const std::string& message)
@@ -98,6 +99,11 @@ void PlayerClient::clearClock()
     }
 
     gst_element_set_base_time(mPipeline, GST_CLOCK_TIME_NONE);
+}
+
+void PlayerClient::onBeforeOpen()
+{
+    sendToServer("nsvr");
 }
 
 void PlayerClient::onBeforeClose()

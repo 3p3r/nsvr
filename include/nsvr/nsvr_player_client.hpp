@@ -8,13 +8,14 @@ namespace nsvr
 
 class PlayerClient
     : public Player
-    , public Peer
+    , public Client
 {
 public:
     //! Constructs a client player with its clock listening from "address" and "port"
     PlayerClient(const std::string& address, short port);
 
 protected:
+    virtual void    onBeforeOpen() override;
     virtual void    onBeforeClose() override;
     virtual void    onBeforeUpdate() override;
     virtual void    onMessage(const std::string& message) override;
