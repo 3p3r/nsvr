@@ -9,7 +9,6 @@ namespace nsvr
 
 PlayerServer::PlayerServer(const std::string& address, short port)
     : mClockAddress(address)
-    , mClockPort(port)
     , mNetClock(nullptr)
     , mNetProvider(nullptr)
     , mHeartbeatCounter(0)
@@ -18,8 +17,7 @@ PlayerServer::PlayerServer(const std::string& address, short port)
     , mPendingState(GST_STATE_NULL)
     , mPendingCurrentTime(GST_CLOCK_TIME_NONE)
 {
-    if (defaultServerEnabled() &&
-        !listen(getDefaultServerPort()))
+    if (!listen(port))
     {
         NSVR_LOG("Player was unable to join the default multicast group.");
         return;
@@ -54,7 +52,7 @@ void PlayerServer::setupClock()
     clearClock();
 
     if ((mNetClock = gst_pipeline_get_clock(GST_PIPELINE(mPipeline))) &&
-        (mNetProvider = GST_OBJECT(gst_net_time_provider_new(mNetClock, mClockAddress.c_str(), mClockPort))))
+        (mNetProvider = GST_OBJECT(gst_net_time_provider_new(mNetClock, mClockAddress.c_str(), internal::getClockPort(getPort())))))
     {
         GstClockTime base_time = gst_clock_get_time(mNetClock);
 

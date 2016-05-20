@@ -42,7 +42,6 @@ private:
     GstState            mPendingState;
     unsigned            mHeartbeatCounter;
     unsigned            mHeartbeatFrequency;
-    short               mClockPort;
 };
 
 }
