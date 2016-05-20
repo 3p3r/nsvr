@@ -1,7 +1,7 @@
 #pragma once
 
 #include "nsvr/nsvr_player.hpp"
-#include "nsvr/nsvr_peer.hpp"
+#include "nsvr/nsvr_client.hpp"
 
 namespace nsvr
 {

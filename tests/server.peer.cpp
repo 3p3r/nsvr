@@ -4,7 +4,7 @@
 #include "cinder/app/App.h"
 #include "cinder/gl/gl.h"
 
-#include "nsvr/nsvr_peer.hpp"
+#include "nsvr/nsvr_server.hpp"
 
 using namespace ci;
 using namespace ci::app;

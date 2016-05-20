@@ -2,7 +2,6 @@
 
 #include "nsvr/nsvr_discoverer.hpp"
 #include "nsvr/nsvr_player.hpp"
-#include "nsvr/nsvr_peer.hpp"
 
 #include <gst/net/net.h>
 #include <gst/gstregistry.h>

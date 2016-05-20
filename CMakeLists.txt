@@ -16,7 +16,8 @@ FIND_PACKAGE( GStreamer REQUIRED )
 
 SET( NSVR_HEADERS
   "${NSVR_INCLUDE}/nsvr.hpp"
-  "${NSVR_INCLUDE}/nsvr/nsvr_peer.hpp"
+  "${NSVR_INCLUDE}/nsvr/nsvr_client.hpp"
+  "${NSVR_INCLUDE}/nsvr/nsvr_server.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_player.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_player_client.hpp"
   "${NSVR_INCLUDE}/nsvr/nsvr_player_server.hpp"
@@ -25,7 +26,8 @@ SET( NSVR_HEADERS
 
 SET( NSVR_SOURCES
   "${NSVR_SOURCE}/nsvr.cpp"
-  "${NSVR_SOURCE}/nsvr/nsvr_peer.cpp"
+  "${NSVR_SOURCE}/nsvr/nsvr_client.cpp"
+  "${NSVR_SOURCE}/nsvr/nsvr_server.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_player.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_player_client.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_player_server.cpp"
