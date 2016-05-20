@@ -52,6 +52,9 @@ void log(const std::string& msg);
 //! attempts to obtain IP address which initiated the connection.
 std::string getIp(GSocketConnection* connection);
 
+//! calculates clock port from server port
+short getClockPort(short server_port);
+
 }}
 
 /*! A convenience macro for nsvr::Logger. Input can be either string or stream

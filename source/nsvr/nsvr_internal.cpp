@@ -150,4 +150,11 @@ std::string getIp(GSocketConnection* connection)
     return ip;
 }
 
+short getClockPort(short server_port)
+{
+    if (server_port == 65535)
+        return server_port - 1;
+    else return server_port + 1;
+}
+
 }}
