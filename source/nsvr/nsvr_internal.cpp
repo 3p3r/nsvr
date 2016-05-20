@@ -9,6 +9,8 @@
 #include <gst/app/gstappsink.h>
 #include <gst/pbutils/gstdiscoverer.h>
 
+#include <iostream>
+
 #ifdef _WIN32
 #   include <windows.h>
 #endif
@@ -118,7 +120,7 @@ void log(const std::string& msg)
 #ifdef _WIN32
     ::OutputDebugStringA(msg.c_str());
 #endif
-    g_debug(msg.c_str());
+    std::cout << msg;
 }
 
 std::string getIp(GSocketConnection* connection)
