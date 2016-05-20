@@ -22,7 +22,9 @@ template<> BindToScope<GError>::~BindToScope()                  { g_error_free(p
 template<> BindToScope<GstClock>::~BindToScope()                { gst_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstMessage>::~BindToScope()              { gst_message_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstAppSink>::~BindToScope()              { g_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GInetAddress>::~BindToScope()            { g_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstDiscoverer>::~BindToScope()           { g_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GSocketAddress>::~BindToScope()          { g_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstDiscovererInfo>::~BindToScope()       { gst_discoverer_info_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstNetTimeProvider>::~BindToScope()      { gst_object_unref(pointer); pointer = nullptr; }
 template<> BindToScope<GstDiscovererStreamInfo>::~BindToScope() { gst_discoverer_stream_info_unref(pointer); pointer = nullptr; }
@@ -115,6 +117,33 @@ void log(const std::string& msg)
     ::OutputDebugStringA(msg.c_str());
 #endif
     g_debug(msg.c_str());
+}
+
+std::string getIp(GSocketConnection* connection)
+{
+    GError *error = nullptr;
+    std::string ip;
+
+    if (!connection)
+        return ip;
+
+    if (GSocketAddress *sock_addr = g_socket_connection_get_remote_address(connection, &error))
+    {
+        BIND_TO_SCOPE(sock_addr);
+        if (GInetSocketAddress *addr = G_INET_SOCKET_ADDRESS(sock_addr))
+        {
+            if (GInetAddress *inet_addr = g_inet_socket_address_get_address(addr))
+            {
+                if (gchar *addr_string = g_inet_address_to_string(inet_addr))
+                {
+                    BIND_TO_SCOPE(addr_string);
+                    ip.assign(addr_string);
+                }
+            }
+        }
+    }
+
+    return ip;
 }
 
 }}

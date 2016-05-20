@@ -5,6 +5,8 @@
 #include <vector>
 #include <sstream>
 
+#include <gio/gio.h>
+
 namespace nsvr {
 namespace internal {
 
@@ -46,6 +48,9 @@ std::vector<std::string> explode(const std::string &input, char separator);
  * @note  Users should prefer using convenience NSVR_LOG macro.
  */
 void log(const std::string& msg);
+
+//! attempts to obtain IP address which initiated the connection.
+std::string getIp(GSocketConnection* connection);
 
 }}
 
