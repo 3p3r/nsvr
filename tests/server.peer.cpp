@@ -16,17 +16,30 @@ class ServerPeer : public App, private Server {
 public:
     void    setup() override;
     void    update() override;
+    void    mouseDown(MouseEvent event) override;
     void    onMessage(const std::string& message) override;
 };
 
 void ServerPeer::onMessage(const std::string& message)
 {
-    std::cout << "Peer message: " << message << std::endl;
+    std::cout << "Server message: " << message << std::endl;
 }
 
 void ServerPeer::setup()
 {
     listen(5000);
+}
+
+void ServerPeer::mouseDown(MouseEvent event)
+{
+    std::stringstream ss;
+    ss
+        << "Thread heartbeat: "
+        << std::this_thread::get_id()
+        << " at Epoch timestamp: "
+        << std::chrono::high_resolution_clock::now().time_since_epoch().count();
+
+    broadcast(ss.str());
 }
 
 void ServerPeer::update()

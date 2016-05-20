@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -59,23 +60,40 @@ private:
 class Server
 {
 public:
-    explicit Server();
-    virtual ~Server();
+    explicit            Server();
+    virtual             ~Server();
 
-    bool listen(short port);
-    void iterate();
-    bool isConnected();
-    void disconnect();
-    void broadcast(const std::string& message);
+    bool                listen(short port);
+    void                iterate();
+    bool                isConnected();
+    void                disconnect();
+    void                broadcast(const std::string& message);
+    short               getPort() const;
 
 protected:
-    virtual void onMessage(const std::string& message) {}
+    virtual void        onMessage(const std::string& message) { /* no-op */ }
 
 private:
-    static gboolean incoming(GSocketService *service, GSocketConnection *connection, GObject *source_object, gpointer user_data);
+    static gboolean     incoming(GSocketService *service, GSocketConnection *connection, GObject *source_object, gpointer user_data);
 
 private:
-    GSocketService* mSocketService;
+    class UdpEndpoint
+    {
+    public:
+        UdpEndpoint();
+        ~UdpEndpoint();
+        void            connect(const std::string& ip, short port);
+        void            send(const std::string& message, unsigned timeout = 1);
+
+    private:
+        GSocket         *mEndpointSocket;
+        GSocketAddress  *mEndpointAddress;
+    };
+
+private:
+    std::unordered_map<std::string, UdpEndpoint>    mEndpoints;
+    GSocketService*                                 mSocketService;
+    short                                           mPort;
 };
 
 }

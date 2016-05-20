@@ -203,6 +203,7 @@ gboolean Peer::onSocketData(GSocket *socket, GIOCondition condition, gpointer se
 
 Server::Server()
     : mSocketService(nullptr)
+    , mPort(0)
 {}
 
 Server::~Server()
@@ -230,6 +231,7 @@ bool Server::listen(short port)
     g_signal_connect(mSocketService, "incoming", G_CALLBACK(incoming), this);
     g_socket_service_start(mSocketService);
 
+    mPort = port;
     return isConnected();
 }
 
@@ -251,11 +253,18 @@ void Server::disconnect()
 
     g_socket_service_stop(mSocketService);
     mSocketService = nullptr;
+    mPort = 0;
 }
 
 void Server::broadcast(const std::string& message)
 {
-    // todo
+    for (auto& endpoint : mEndpoints)
+        endpoint.second.send(message);
+}
+
+short Server::getPort() const
+{
+    return mPort;
 }
 
 gboolean Server::incoming(GSocketService *service, GSocketConnection *connection, GObject *source_object, gpointer user_data)
@@ -265,18 +274,91 @@ gboolean Server::incoming(GSocketService *service, GSocketConnection *connection
         GError* error = nullptr;
         const gssize count = 16;
         gchar message[count] {0};
+        BIND_TO_SCOPE(error);
 
         if (g_input_stream_read(istream, message, count, nullptr, &error) >= 0)
         {
             if (auto server = static_cast<Server*>(user_data))
+            {
+                std::string ip = internal::getIp(connection);
+
+                if (server->mEndpoints.find(ip) == server->mEndpoints.cend())
+                {
+                    server->mEndpoints[ip] = UdpEndpoint();
+                    server->mEndpoints[ip].connect(ip, server->getPort());
+                }
+
                 server->onMessage(message);
+            }
             else
+            {
                 NSVR_LOG("Unable to cast user data to Server.")
+            }
         }
         else NSVR_LOG("Unable to read the input stream.")
     }
 
     return FALSE;
+}
+
+void Server::UdpEndpoint::connect(const std::string& ip, short port)
+{
+    GInetAddress *group = g_inet_address_new_from_string(ip.c_str());
+    BIND_TO_SCOPE(group);
+
+    mEndpointAddress = g_inet_socket_address_new(group, port);
+
+    if (!mEndpointAddress)
+    {
+        NSVR_LOG("Endpoint address could not be constructed: " << ip);
+        return;
+    }
+
+    GError *errors = nullptr;
+    BIND_TO_SCOPE(errors);
+
+    mEndpointSocket = g_socket_new(
+        GSocketFamily::G_SOCKET_FAMILY_IPV4,
+        GSocketType::G_SOCKET_TYPE_DATAGRAM,
+        GSocketProtocol::G_SOCKET_PROTOCOL_UDP,
+        &errors);
+
+    if (!mEndpointSocket)
+    {
+        NSVR_LOG("Unable to construct send soccket [" << errors->message << "].");
+        return;
+    }
+
+    g_socket_set_blocking(mEndpointSocket, FALSE);
+}
+
+Server::UdpEndpoint::UdpEndpoint()
+    : mEndpointSocket(nullptr)
+    , mEndpointAddress(nullptr)
+{}
+
+Server::UdpEndpoint::~UdpEndpoint()
+{
+    g_clear_object(&mEndpointSocket);
+    g_clear_object(&mEndpointAddress);
+}
+
+void Server::UdpEndpoint::send(const std::string& message, unsigned timeout /*= 1*/)
+{
+    if (!mEndpointAddress || !mEndpointSocket)
+        return;
+
+    GError *errors = nullptr;
+    BIND_TO_SCOPE(errors);
+
+    if (g_socket_get_timeout(mEndpointSocket) != timeout)
+        g_socket_set_timeout(mEndpointSocket, timeout);
+
+    if (g_socket_send_to(mEndpointSocket, mEndpointAddress, message.c_str(), message.size(), nullptr, &errors) < 0)
+    {
+        NSVR_LOG("Server was unable to send a message [" << errors->message << "].");
+        return;
+    }
 }
 
 }
