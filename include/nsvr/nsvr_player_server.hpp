@@ -8,7 +8,7 @@ namespace nsvr
 
 class PlayerServer
     : public Player
-    , public Peer
+    , public Server
 {
 public:
     //! Constructs a server player with its clock dispatched at "address" and "port"

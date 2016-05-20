@@ -18,8 +18,8 @@ PlayerServer::PlayerServer(const std::string& address, short port)
     , mPendingState(GST_STATE_NULL)
     , mPendingCurrentTime(GST_CLOCK_TIME_NONE)
 {
-    if (defaultMulticastGroupEnabled() &&
-        !connect(getDefaultMulticastIp(), getDefaultMulticastPort()))
+    if (defaultServerEnabled() &&
+        !listen(getDefaultServerPort()))
     {
         NSVR_LOG("Player was unable to join the default multicast group.");
         return;
@@ -93,7 +93,7 @@ void PlayerServer::dispatchHeartbeat()
     packet.state    = getState();
     packet.base     = gst_element_get_base_time(mPipeline);
 
-    send(PacketHandler::serialize(packet));
+    broadcastToClients(PacketHandler::serialize(packet));
 }
 
 void PlayerServer::clearClock()
