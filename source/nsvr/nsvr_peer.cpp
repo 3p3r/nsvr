@@ -12,7 +12,7 @@ struct ScopedSocketRef
 
 namespace nsvr {
 
-Peer::Peer()
+Client::Client()
     : mReceiveSocket(nullptr)
     , mListenAddress(nullptr)
     , mContext(nullptr)
@@ -21,19 +21,19 @@ Peer::Peer()
     , mServerPort(0)
 {}
 
-Peer::~Peer()
+Client::~Client()
 {
     if (isConnected())
         disconnect();
 }
 
-bool Peer::connect(const std::string& mutlicast_group, short multicast_port)
+bool Client::connect(const std::string& mutlicast_group, short multicast_port)
 {
     if (isConnected())
         disconnect();
 
-    mServerAddress  .clear();
-    mServerPort     = 0;
+    mServerAddress  = mutlicast_group;
+    mServerPort     = multicast_port;
     mConnected      = false;
     GError *errors  = nullptr;
 
@@ -79,18 +79,16 @@ bool Peer::connect(const std::string& mutlicast_group, short multicast_port)
         return false;
     }
 
-    mServerAddress = mutlicast_group;
-    mServerPort = multicast_port;
     mConnected = true;
     return true;
 }
 
-bool Peer::isConnected() const
+bool Client::isConnected() const
 {
     return mConnected;
 }
 
-void Peer::disconnect()
+void Client::disconnect()
 {
     if (!isConnected())
         return;
@@ -108,8 +106,11 @@ void Peer::disconnect()
     NSVR_LOG("Peer is disconnected.");
 }
 
-void Peer::send(const std::string& message)
+void Client::sendToServer(const std::string& message)
 {
+    if (!(!mServerAddress.empty() && mServerPort > 0))
+        return;
+
     if (GSocketClient *client = g_socket_client_new())
     {
         GError *error = nullptr;
@@ -142,7 +143,7 @@ void Peer::send(const std::string& message)
     }
 }
 
-void Peer::iterate()
+void Client::iterate()
 {
     if (!isConnected())
         return;
@@ -151,11 +152,16 @@ void Peer::iterate()
         g_main_context_iteration(mContext, FALSE);
 }
 
-gboolean Peer::incomming(GSocket *socket, GIOCondition condition, gpointer self)
+const std::string& Client::getServerAddress() const
+{
+    return mServerAddress;
+}
+
+gboolean Client::incomming(GSocket *socket, GIOCondition condition, gpointer self)
 {
     gboolean source_action = G_SOURCE_CONTINUE;
 
-    if (auto peer = static_cast<nsvr::Peer*>(self))
+    if (auto peer = static_cast<nsvr::Client*>(self))
     {
         ScopedSocketRef ss(socket);
 
@@ -191,6 +197,11 @@ gboolean Peer::incomming(GSocket *socket, GIOCondition condition, gpointer self)
     return source_action;
 }
 
+short Client::getServerPort() const
+{
+    return mServerPort;
+}
+
 Server::Server()
     : mSocketService(nullptr)
     , mPort(0)
@@ -198,14 +209,14 @@ Server::Server()
 
 Server::~Server()
 {
-    if (isConnected())
-        disconnect();
+    if (isListening())
+        shutdown();
 }
 
 bool Server::listen(short port)
 {
-    if (isConnected())
-        disconnect();
+    if (isListening())
+        shutdown();
 
     GError *errors = nullptr;
     
@@ -214,7 +225,7 @@ bool Server::listen(short port)
     if (g_socket_listener_add_inet_port((GSocketListener*)mSocketService, port, nullptr, &errors) == FALSE)
     {
         NSVR_LOG("Unable to bind Server to port " << port);
-        disconnect();
+        shutdown();
         return false;
     }
 
@@ -222,7 +233,7 @@ bool Server::listen(short port)
     g_socket_service_start(mSocketService);
 
     mPort = port;
-    return isConnected();
+    return isListening();
 }
 
 void Server::iterate()
@@ -231,14 +242,14 @@ void Server::iterate()
         g_main_context_iteration(g_main_context_default(), FALSE);
 }
 
-bool Server::isConnected()
+bool Server::isListening()
 {
     return mSocketService != nullptr && g_socket_service_is_active(mSocketService) != FALSE;
 }
 
-void Server::disconnect()
+void Server::shutdown()
 {
-    if (!isConnected())
+    if (!isListening())
         return;
 
     g_socket_service_stop(mSocketService);
@@ -246,9 +257,12 @@ void Server::disconnect()
     mPort = 0;
 }
 
-void Server::broadcast(const std::string& message)
+void Server::broadcastToClients(const std::string& message)
 {
-    for (auto& endpoint : mEndpoints)
+    if (mEndpoints.empty())
+        return;
+
+    for (const auto& endpoint : mEndpoints)
         endpoint.second.send(message);
 }
 
@@ -275,7 +289,7 @@ gboolean Server::incoming(GSocketService *service, GSocketConnection *connection
                 if (server->mEndpoints.find(ip) == server->mEndpoints.cend())
                 {
                     server->mEndpoints[ip] = UdpEndpoint();
-                    server->mEndpoints[ip].connect(ip, server->getPort());
+                    server->mEndpoints[ip].setup(ip, server->getPort());
                 }
 
                 server->onMessage(message);
@@ -291,8 +305,15 @@ gboolean Server::incoming(GSocketService *service, GSocketConnection *connection
     return FALSE;
 }
 
-void Server::UdpEndpoint::connect(const std::string& ip, short port)
+void Server::UdpEndpoint::setup(const std::string& ip, short port)
 {
+    if (mEndpointSocket)
+        g_clear_object(&mEndpointSocket);
+
+    if (mEndpointAddress)
+        g_clear_object(&mEndpointAddress);
+
+
     GInetAddress *group = g_inet_address_new_from_string(ip.c_str());
     BIND_TO_SCOPE(group);
 
@@ -333,7 +354,7 @@ Server::UdpEndpoint::~UdpEndpoint()
     g_clear_object(&mEndpointAddress);
 }
 
-void Server::UdpEndpoint::send(const std::string& message, unsigned timeout /*= 1*/)
+void Server::UdpEndpoint::send(const std::string& message, unsigned timeout /*= 1*/) const
 {
     if (!mEndpointAddress || !mEndpointSocket)
         return;
