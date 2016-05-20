@@ -68,30 +68,6 @@ void addPluginPath(const std::string& path)
     }
 }
 
-short getDefaultServerPort()
-{
-    static auto handle = getDefaultServer();
-    return handle->port;
-}
-
-void setDefaultServerPort(short port)
-{
-    static auto handle = getDefaultServer();
-    handle->port = port;
-}
-
-bool defaultServerEnabled()
-{
-    static auto handle = getDefaultServer();
-    return handle->enabled;
-}
-
-void enableDefaultServer(bool on /*= true*/)
-{
-    static auto handle = getDefaultServer();
-    handle->enabled = on;
-}
-
 void listModules()
 {
 #ifdef _WIN32

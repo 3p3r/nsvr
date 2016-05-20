@@ -17,18 +17,6 @@ std::string getVersion();
 //! Adds a plug-in path to GStreamer's search directory
 void addPluginPath(const std::string& path);
 
-//! Returns default server port
-short getDefaultServerPort();
-
-//! Sets default server port
-void setDefaultServerPort(short port);
-
-//! Returns if default server is enabled (default: yes)
-bool defaultServerEnabled();
-
-//! Sets if default server is enabled (default: yes)
-void enableDefaultServer(bool on = true);
-
 //! Utility that prints all loaded DLLs on Windows
 void listModules();
 
