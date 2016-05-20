@@ -58,8 +58,7 @@ SET( TEST_TARGETS
   "basic.client"
   "basic.server"
   "server.peer"
-  "client.peer"
-  "multicast.peer" )
+  "client.peer" )
 
 FOREACH( TEST_TARGET ${TEST_TARGETS} )
   ADD_EXECUTABLE( test.${TEST_TARGET}
