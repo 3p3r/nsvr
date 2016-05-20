@@ -27,13 +27,13 @@ Client::~Client()
         disconnect();
 }
 
-bool Client::connect(const std::string& mutlicast_group, short multicast_port)
+bool Client::connect(const std::string& server_address, short server_port)
 {
     if (isConnected())
         disconnect();
 
-    mServerAddress  = mutlicast_group;
-    mServerPort     = multicast_port;
+    mServerAddress  = server_address;
+    mServerPort     = server_port;
     mConnected      = false;
     GError *errors  = nullptr;
 
@@ -56,7 +56,7 @@ bool Client::connect(const std::string& mutlicast_group, short multicast_port)
     auto listen_group = g_inet_address_new_any(GSocketFamily::G_SOCKET_FAMILY_IPV4);
     BIND_TO_SCOPE(listen_group);
 
-    mListenAddress = g_inet_socket_address_new(listen_group, multicast_port);
+    mListenAddress = g_inet_socket_address_new(listen_group, server_port);
 
     if (!mListenAddress)
     {
