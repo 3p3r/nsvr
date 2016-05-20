@@ -10,21 +10,20 @@
 
 namespace {
 
-struct DefaultMulticastGroup
+struct DefaultServer
 {
-    DefaultMulticastGroup(const std::string& g, short p)
-        : group(g), port(p), enabled(true)
+    DefaultServer(short p)
+        : port(p), enabled(true)
     { /* no-op */ }
 
-    std::string group;
     short       port;
     bool        enabled;
 };
 
-std::shared_ptr<DefaultMulticastGroup> getDefaultMulticastGroup()
+std::shared_ptr<DefaultServer> getDefaultServer()
 {
-    static std::shared_ptr<DefaultMulticastGroup> instance
-        = std::make_shared<DefaultMulticastGroup>("239.0.0.1", 5000);
+    static std::shared_ptr<DefaultServer> instance
+        = std::make_shared<DefaultServer>(5000);
 
     return instance;
 }
@@ -69,39 +68,27 @@ void addPluginPath(const std::string& path)
     }
 }
 
-std::string getDefaultMulticastIp()
+short getDefaultServerPort()
 {
-    static auto handle = getDefaultMulticastGroup();
-    return handle->group;
-}
-
-void setDefaultMulticastIp(const std::string& group)
-{
-    static auto handle = getDefaultMulticastGroup();
-    handle->group = group;
-}
-
-short getDefaultMulticastPort()
-{
-    static auto handle = getDefaultMulticastGroup();
+    static auto handle = getDefaultServer();
     return handle->port;
 }
 
-void setDefaultMulticastPort(short port)
+void setDefaultServerPort(short port)
 {
-    static auto handle = getDefaultMulticastGroup();
+    static auto handle = getDefaultServer();
     handle->port = port;
 }
 
-bool defaultMulticastGroupEnabled()
+bool defaultServerEnabled()
 {
-    static auto handle = getDefaultMulticastGroup();
+    static auto handle = getDefaultServer();
     return handle->enabled;
 }
 
-void enableDefaultMulticastGroup(bool on /*= true*/)
+void enableDefaultServer(bool on /*= true*/)
 {
-    static auto handle = getDefaultMulticastGroup();
+    static auto handle = getDefaultServer();
     handle->enabled = on;
 }
 

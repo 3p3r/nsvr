@@ -17,23 +17,17 @@ std::string getVersion();
 //! Adds a plug-in path to GStreamer's search directory
 void addPluginPath(const std::string& path);
 
-//! Returns default multicast IP
-std::string getDefaultMulticastIp();
+//! Returns default server port
+short getDefaultServerPort();
 
-//! Sets default multicast IP
-void setDefaultMulticastIp(const std::string& group);
+//! Sets default server port
+void setDefaultServerPort(short port);
 
-//! Returns default multicast port
-short getDefaultMulticastPort();
+//! Returns if default server is enabled (default: yes)
+bool defaultServerEnabled();
 
-//! Sets default multicast port
-void setDefaultMulticastPort(short port);
-
-//! Returns if default multicast is enabled (default: yes)
-bool defaultMulticastGroupEnabled();
-
-//! Sets if default multicast is enabled (default: yes)
-void enableDefaultMulticastGroup(bool on = true);
+//! Sets if default server is enabled (default: yes)
+void enableDefaultServer(bool on = true);
 
 //! Utility that prints all loaded DLLs on Windows
 void listModules();
