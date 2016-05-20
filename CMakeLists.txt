@@ -34,6 +34,15 @@ SET( NSVR_SOURCES
   "${NSVR_SOURCE}/nsvr/nsvr_internal.cpp"
   "${NSVR_SOURCE}/nsvr/nsvr_discoverer.cpp" )
 
+IF( MSVC )
+  ADD_DEFINITIONS(
+    -DVC_EXTRALEAN
+    -DWINVER=0x0601
+    -D_WIN32_WINNT=0x0601
+    -DWIN32_LEAN_AND_MEAN
+    -D_CRT_SECURE_NO_WARNINGS)
+ENDIF()
+
 ADD_LIBRARY( nsvr.static STATIC ${NSVR_HEADERS} ${NSVR_SOURCES} )
 TARGET_ADD_GSTREAMER_MODULES( nsvr.static
 	gstreamer-1.0
