@@ -8,9 +8,7 @@ namespace nsvr
 {
 
 PlayerClient::PlayerClient(const std::string& address, short port)
-    : mClockAddress(address)
-    , mBaseTime(0)
-    , mClockPort(port)
+    : mBaseTime(0)
     , mNetClock(nullptr)
 {
     if (!connect(address, port))
@@ -54,7 +52,7 @@ void PlayerClient::setupClock()
 
     clearClock();
 
-    if (GstClock *net_clock = gst_net_client_clock_new(nullptr, mClockAddress.c_str(), mClockPort, mBaseTime))
+    if (GstClock *net_clock = gst_net_client_clock_new(nullptr, getServerAddress().c_str(), internal::getClockPort(getServerPort()), mBaseTime))
     {
         mNetClock = net_clock;
         gst_clock_set_timeout(mNetClock, 100 * GST_MSECOND);

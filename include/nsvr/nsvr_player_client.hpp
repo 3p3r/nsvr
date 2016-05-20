@@ -23,10 +23,8 @@ protected:
     void            clearClock();
 
 private:
-    std::string     mClockAddress;
     GstClock*       mNetClock;
     GstClockTime    mBaseTime;
-    short           mClockPort;
 };
 
 }
