@@ -56,4 +56,26 @@ private:
     bool            mConnected;
 };
 
+class Server
+{
+public:
+    explicit Server();
+    virtual ~Server();
+
+    bool listen(short port);
+    void iterate();
+    bool isConnected();
+    void disconnect();
+    void broadcast(const std::string& message);
+
+protected:
+    virtual void onMessage(const std::string& message) {}
+
+private:
+    static gboolean incoming(GSocketService *service, GSocketConnection *connection, GObject *source_object, gpointer user_data);
+
+private:
+    GSocketService* mSocketService;
+};
+
 }

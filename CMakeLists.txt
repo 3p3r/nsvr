@@ -57,6 +57,8 @@ SET( TEST_TARGETS
   "basic.playback"
   "basic.client"
   "basic.server"
+  "server.peer"
+  "client.peer"
   "multicast.peer" )
 
 FOREACH( TEST_TARGET ${TEST_TARGETS} )

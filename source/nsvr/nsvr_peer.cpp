@@ -201,4 +201,82 @@ gboolean Peer::onSocketData(GSocket *socket, GIOCondition condition, gpointer se
     return source_action;
 }
 
+Server::Server()
+    : mSocketService(nullptr)
+{}
+
+Server::~Server()
+{
+    if (isConnected())
+        disconnect();
+}
+
+bool Server::listen(short port)
+{
+    if (isConnected())
+        disconnect();
+
+    GError *errors = nullptr;
+    
+    mSocketService = g_socket_service_new();
+    
+    if (g_socket_listener_add_inet_port((GSocketListener*)mSocketService, port, nullptr, &errors) == FALSE)
+    {
+        NSVR_LOG("Unable to bind Server to port " << port);
+        disconnect();
+        return false;
+    }
+
+    g_signal_connect(mSocketService, "incoming", G_CALLBACK(incoming), this);
+    g_socket_service_start(mSocketService);
+
+    return isConnected();
+}
+
+void Server::iterate()
+{
+    while (g_main_context_pending(g_main_context_default()) != FALSE)
+        g_main_context_iteration(g_main_context_default(), FALSE);
+}
+
+bool Server::isConnected()
+{
+    return mSocketService != nullptr && g_socket_service_is_active(mSocketService) != FALSE;
+}
+
+void Server::disconnect()
+{
+    if (!isConnected())
+        return;
+
+    g_socket_service_stop(mSocketService);
+    mSocketService = nullptr;
+}
+
+void Server::broadcast(const std::string& message)
+{
+    // todo
+}
+
+gboolean Server::incoming(GSocketService *service, GSocketConnection *connection, GObject *source_object, gpointer user_data)
+{
+    if (GInputStream* istream = g_io_stream_get_input_stream(G_IO_STREAM(connection)))
+    {
+        GError* error = nullptr;
+        const gssize count = 16;
+        gchar message[count] {0};
+
+        if (g_input_stream_read(istream, message, count, nullptr, &error) >= 0)
+        {
+            if (auto server = static_cast<Server*>(user_data))
+                server->onMessage(message);
+            else
+                NSVR_LOG("Unable to cast user data to Server.")
+        }
+        else NSVR_LOG("Unable to read the input stream.")
+    }
+
+    return FALSE;
+}
+
 }
