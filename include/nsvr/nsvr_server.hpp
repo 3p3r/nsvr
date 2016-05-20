@@ -19,7 +19,7 @@ public:
     virtual ~Server();
 
     //! start listening for TCP packets on given ports
-    bool listen(short port);
+    bool listen(const std::string& listen_address, short listen_port);
 
     //! processes pending events received from Clients
     void iterate();
@@ -34,7 +34,10 @@ public:
     void broadcastToClients(const std::string& message);
 
     //! gets the TCP port we are listening on
-    short getPort() const;
+    short getListenPort() const;
+
+    //! gets the TCP address we are listening on
+    const std::string& getListenAddress() const;
 
 protected:
     //! invoked when a TCP message is received from Clients (member)
@@ -69,8 +72,9 @@ private:
 private:
     using EndpointMap   = std::unordered_map < std::string, UdpEndpoint > ;
     EndpointMap         mEndpoints;
+    std::string         mListenAddress;
     GSocketService*     mSocketService;
-    short               mPort;
+    short               mListenPort;
 };
 
 }

@@ -5,7 +5,7 @@ namespace nsvr {
 
 Server::Server()
     : mSocketService(nullptr)
-    , mPort(0)
+    , mListenPort(0)
 {}
 
 Server::~Server()
@@ -14,26 +14,48 @@ Server::~Server()
         shutdown();
 }
 
-bool Server::listen(short port)
+bool Server::listen(const std::string& listen_address, short listen_port)
 {
     if (isListening())
         shutdown();
 
+    mListenAddress = listen_address;
+    mListenPort = listen_port;
+
     GError *errors = nullptr;
+    BIND_TO_SCOPE(errors);
     
-    mSocketService = g_socket_service_new();
-    
-    if (g_socket_listener_add_inet_port((GSocketListener*)mSocketService, port, nullptr, &errors) == FALSE)
+    if (GSocketAddress *inet_addr = g_inet_socket_address_new_from_string(listen_address.c_str(), listen_port))
     {
-        NSVR_LOG("Unable to bind Server to port " << port);
-        shutdown();
+        BIND_TO_SCOPE(inet_addr);
+
+        if (mSocketService = g_socket_service_new())
+        {
+            if (g_socket_listener_add_address(
+                reinterpret_cast<GSocketListener*>(mSocketService),
+                inet_addr, GSocketType::G_SOCKET_TYPE_STREAM,
+                GSocketProtocol::G_SOCKET_PROTOCOL_TCP,
+                nullptr, nullptr, &errors) == FALSE)
+            {
+                NSVR_LOG("Unable to bind Server to address " << listen_address << ":" << listen_port);
+                return false;
+            }
+
+            g_signal_connect(mSocketService, "incoming", G_CALLBACK(incoming), this);
+            g_socket_service_start(mSocketService);
+        }
+        else
+        {
+            NSVR_LOG("Unable to construct socket service.");
+            return false;
+        }
+    }
+    else
+    {
+        NSVR_LOG("Invalid address passed to Server: " << listen_address << ":" << listen_port);
         return false;
     }
 
-    g_signal_connect(mSocketService, "incoming", G_CALLBACK(incoming), this);
-    g_socket_service_start(mSocketService);
-
-    mPort = port;
     return isListening();
 }
 
@@ -55,7 +77,7 @@ void Server::shutdown()
 
     g_socket_service_stop(mSocketService);
     mSocketService = nullptr;
-    mPort = 0;
+    mListenPort = 0;
 }
 
 void Server::broadcastToClients(const std::string& message)
@@ -67,9 +89,14 @@ void Server::broadcastToClients(const std::string& message)
         endpoint.second.send(message);
 }
 
-short Server::getPort() const
+short Server::getListenPort() const
 {
-    return mPort;
+    return mListenPort;
+}
+
+const std::string& Server::getListenAddress() const
+{
+    return mListenAddress;
 }
 
 gboolean Server::incoming(GSocketService *service, GSocketConnection *connection, GObject *source_object, gpointer user_data)
@@ -90,7 +117,7 @@ gboolean Server::incoming(GSocketService *service, GSocketConnection *connection
                 if (server->mEndpoints.find(ip) == server->mEndpoints.cend())
                 {
                     server->mEndpoints[ip] = UdpEndpoint();
-                    server->mEndpoints[ip].setup(ip, server->getPort());
+                    server->mEndpoints[ip].setup(ip, server->getListenPort());
                 }
 
                 server->onMessage(message);
