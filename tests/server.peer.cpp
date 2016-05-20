@@ -39,7 +39,7 @@ void ServerPeer::mouseDown(MouseEvent event)
         << " at Epoch timestamp: "
         << std::chrono::high_resolution_clock::now().time_since_epoch().count();
 
-    broadcast(ss.str());
+    broadcastToClients(ss.str());
 }
 
 void ServerPeer::update()

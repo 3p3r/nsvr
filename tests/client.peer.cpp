@@ -12,7 +12,7 @@ using namespace std;
 using namespace nsvr;
 
 
-class ClientPeer : public App, private Peer {
+class ClientPeer : public App, private Client {
 public:
     void    setup() override;
     void    update() override;
@@ -27,14 +27,7 @@ void ClientPeer::setup()
 
 void ClientPeer::mouseDown(MouseEvent event)
 {
-    std::stringstream ss;
-    ss
-        << "Thread heartbeat: "
-        << std::this_thread::get_id()
-        << " at Epoch timestamp: "
-        << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-
-    send(ss.str());
+    sendToServer("nsvr");
 }
 
 void ClientPeer::onMessage(const std::string& message)
