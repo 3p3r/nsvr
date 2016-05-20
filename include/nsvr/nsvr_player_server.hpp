@@ -15,33 +15,32 @@ public:
     PlayerServer(const std::string& address, short port);
 
     //! Sets the heartbeat frequency of server. Default: 30 seconds
-    void                setHeartbeatFrequency(unsigned freq);
+    void setHeartbeatFrequency(unsigned freq);
 
     //! Gets the heartbeat frequency of server. Default: 30 seconds
-    unsigned            getHeartbeatFrequency() const;
+    unsigned getHeartbeatFrequency() const;
 
     //! Override of Player's setTime to perform network seek
-    virtual void        setTime(gdouble time) override;
+    virtual void setTime(gdouble time) override;
 
 protected:
-    virtual void        onBeforeUpdate() override;
-    virtual void        onBeforeClose() override;
-    virtual void        setupClock() override;
-    virtual void        onBeforeSetState(GstState) override;
-    virtual void        onStateChanged(GstState) override;
-    void                dispatchHeartbeat();
-    void                clearClock();
+    virtual void    onBeforeUpdate() override;
+    virtual void    onBeforeClose() override;
+    virtual void    setupClock() override;
+    virtual void    onBeforeSetState(GstState) override;
+    virtual void    onStateChanged(GstState) override;
+    void            dispatchHeartbeat();
+    void            clearClock();
 
 private:
-    std::string         mClockAddress;
-    GstClock*           mNetClock;
-    GstObject*          mNetProvider;
-    GstClockTime        mClockOffset;
-    GstClockTime        mPendingCurrentTime;
-    gdouble             mPendingStateSeek;
-    GstState            mPendingState;
-    unsigned            mHeartbeatCounter;
-    unsigned            mHeartbeatFrequency;
+    GstClock*       mNetClock;
+    GstObject*      mNetProvider;
+    GstClockTime    mClockOffset;
+    GstClockTime    mPendingCurrentTime;
+    gdouble         mPendingStateSeek;
+    GstState        mPendingState;
+    unsigned        mHeartbeatCounter;
+    unsigned        mHeartbeatFrequency;
 };
 
 }
