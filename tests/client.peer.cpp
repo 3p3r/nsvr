@@ -12,17 +12,17 @@ using namespace std;
 using namespace nsvr;
 
 
-class ClientPeer : public App {
+class ClientPeer : public App, private Peer {
 public:
     void    setup() override;
     void    update() override;
-    void    draw() override;
     void    mouseDown(MouseEvent event) override;
+    void    onMessage(const std::string& message) override;
 };
 
 void ClientPeer::setup()
 {
-    
+    connect("127.0.0.1", 5000);
 }
 
 void ClientPeer::mouseDown(MouseEvent event)
@@ -33,15 +33,19 @@ void ClientPeer::mouseDown(MouseEvent event)
         << std::this_thread::get_id()
         << " at Epoch timestamp: "
         << std::chrono::high_resolution_clock::now().time_since_epoch().count();
+
+    send(ss.str());
+}
+
+void ClientPeer::onMessage(const std::string& message)
+{
+    std::cout << "Client message: " << message << std::endl;
 }
 
 void ClientPeer::update()
 {
-
+    iterate();
 }
-
-void ClientPeer::draw()
-{}
 
 CINDER_APP(ClientPeer, RendererGl, [](App::Settings* settings)
 {

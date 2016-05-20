@@ -13,15 +13,12 @@ struct ScopedSocketRef
 namespace nsvr {
 
 Peer::Peer()
-    : mSendSocket(nullptr)
-    , mReceiveSocket(nullptr)
-    , mListenGroup(nullptr)
-    , mCastGroup(nullptr)
+    : mReceiveSocket(nullptr)
     , mListenAddress(nullptr)
-    , mCastAddress(nullptr)
     , mContext(nullptr)
     , mSource(nullptr)
     , mConnected(false)
+    , mServerPort(0)
 {}
 
 Peer::~Peer()
@@ -35,6 +32,8 @@ bool Peer::connect(const std::string& mutlicast_group, short multicast_port)
     if (isConnected())
         disconnect();
 
+    mServerAddress  .clear();
+    mServerPort     = 0;
     mConnected      = false;
     GError *errors  = nullptr;
 
@@ -48,61 +47,40 @@ bool Peer::connect(const std::string& mutlicast_group, short multicast_port)
 
     if (mReceiveSocket == nullptr)
     {
-        NSVR_LOG("Unable to construct receive soccket [" << errors->message << "].");
-        return false;
-    }
-    
-    mSendSocket = g_socket_new(
-        GSocketFamily::G_SOCKET_FAMILY_IPV4,
-        GSocketType::G_SOCKET_TYPE_DATAGRAM,
-        GSocketProtocol::G_SOCKET_PROTOCOL_UDP,
-        &errors);
-
-    if (!mSendSocket)
-    {
-        NSVR_LOG("Unable to construct send soccket [" << errors->message << "].");
+        NSVR_LOG("Unable to construct receive socket [" << errors->message << "].");
         return false;
     }
 
-    g_socket_set_multicast_loopback(mReceiveSocket, TRUE);
     g_socket_set_blocking(mReceiveSocket, FALSE);
-    g_socket_set_blocking(mSendSocket, FALSE);
-    g_socket_set_broadcast(mSendSocket, TRUE);
 
-    mListenGroup = g_inet_address_new_any(GSocketFamily::G_SOCKET_FAMILY_IPV4);
-    mListenAddress = g_inet_socket_address_new(mListenGroup, multicast_port);
+    auto listen_group = g_inet_address_new_any(GSocketFamily::G_SOCKET_FAMILY_IPV4);
+    BIND_TO_SCOPE(listen_group);
 
-    if (!mListenGroup || !mListenAddress)
+    mListenAddress = g_inet_socket_address_new(listen_group, multicast_port);
+
+    if (!mListenAddress)
     {
-        NSVR_LOG("Listens address(es) could not be constructed.");
+        NSVR_LOG("Listen address could not be constructed.");
         return false;
     }
 
-    mCastGroup = g_inet_address_new_from_string(mutlicast_group.c_str());
-    mCastAddress = g_inet_socket_address_new(mCastGroup, multicast_port);
-
-    if (!mCastGroup || !mCastAddress)
-    {
-        NSVR_LOG("Cast address(es) could not be constructed.");
-        return false;
-    }
-
-    if (g_socket_bind(mReceiveSocket, mListenAddress, TRUE, &errors) != FALSE &&
-        g_socket_join_multicast_group(mReceiveSocket, mCastGroup, FALSE, nullptr, &errors) != FALSE)
+    if (g_socket_bind(mReceiveSocket, mListenAddress, TRUE, &errors) != FALSE)
     {
         mContext = g_main_context_new();
         mSource = g_socket_create_source(mReceiveSocket, G_IO_IN, nullptr);
 
-        g_source_set_callback(mSource, reinterpret_cast<GSourceFunc>(onSocketData), this, nullptr);
+        g_source_set_callback(mSource, reinterpret_cast<GSourceFunc>(incomming), this, nullptr);
         g_source_set_priority(mSource, G_PRIORITY_HIGH);
         g_source_attach(mSource, mContext);
     }
     else
     {
-        NSVR_LOG("Peer failed to join the multicast group [" << errors->message << "].");
+        NSVR_LOG("Client failed to bind [" << errors->message << "].");
         return false;
     }
 
+    mServerAddress = mutlicast_group;
+    mServerPort = multicast_port;
     mConnected = true;
     return true;
 }
@@ -123,32 +101,44 @@ void Peer::disconnect()
     mSource = nullptr;
     mContext = nullptr;
 
-    g_clear_object(&mCastAddress);
     g_clear_object(&mListenAddress);
-    g_clear_object(&mCastGroup);
-    g_clear_object(&mListenGroup);
     g_clear_object(&mReceiveSocket);
-    g_clear_object(&mSendSocket);
 
     mConnected = false;
     NSVR_LOG("Peer is disconnected.");
 }
 
-void Peer::send(const std::string& message, unsigned timeout /*= 1*/)
+void Peer::send(const std::string& message)
 {
-    if (!isConnected())
-        return;
-
-    GError *errors = nullptr;
-    BIND_TO_SCOPE(errors);
-
-    if (g_socket_get_timeout(mSendSocket) != timeout)
-        g_socket_set_timeout(mSendSocket, timeout);
-
-    if (g_socket_send_to(mSendSocket, mCastAddress, message.c_str(), message.size(), nullptr, &errors) < 0)
+    if (GSocketClient *client = g_socket_client_new())
     {
-        NSVR_LOG("Peer was unable to send a message [" << errors->message << "].");
-        return;
+        GError *error = nullptr;
+        BIND_TO_SCOPE(error);
+        BIND_TO_SCOPE(client);
+
+        if (GSocketConnection *connection = g_socket_client_connect_to_host(client, mServerAddress.c_str(), mServerPort, nullptr, &error))
+        {
+            BIND_TO_SCOPE(connection);
+            if (GOutputStream *ostream = g_io_stream_get_output_stream(G_IO_STREAM(connection)))
+            {
+                if (g_output_stream_write(ostream, message.c_str(), message.size(), nullptr, &error) < 0)
+                {
+                    NSVR_LOG("Client was unable to write to output stream.");
+                }
+            }
+            else
+            {
+                NSVR_LOG("Client was unable to obtain output stream.");
+            }
+        }
+        else
+        {
+            NSVR_LOG("Client was unable to connect to host.");
+        }
+    }
+    else
+    {
+        NSVR_LOG("Client was unable to construct socket client.");
     }
 }
 
@@ -161,7 +151,7 @@ void Peer::iterate()
         g_main_context_iteration(mContext, FALSE);
 }
 
-gboolean Peer::onSocketData(GSocket *socket, GIOCondition condition, gpointer self)
+gboolean Peer::incomming(GSocket *socket, GIOCondition condition, gpointer self)
 {
     gboolean source_action = G_SOURCE_CONTINUE;
 
