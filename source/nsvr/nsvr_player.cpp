@@ -9,16 +9,159 @@ namespace nsvr
 {
 
 Player::Player()
-    : mLoop(false)
-    , mMute(false)
+    : mPlayerState(GST_PLAYER_STATE_STOPPED)
+    , mGstPipeline(nullptr)
+    , mGstPlayer(nullptr)
+    , mReady(false)
 {
-    reset();
-
     if (!internal::gstreamerInitialized())
     {
         NSVR_LOG("Player requires GStreamer to be initialized.");
         return;
     }
+}
+
+bool Player::isReady() const
+{
+    return mReady;
+}
+
+bool Player::isGstPlayerValid() const
+{
+    return (mGstPlayer != nullptr) && (mGstPipeline != nullptr);
+}
+
+bool Player::isVideoSinkValid() const
+{
+    if (!isGstPlayerValid())
+        return false;
+
+    gpointer current_videosink = nullptr;
+    g_object_get(mGstPipeline, "video-sink", &current_videosink, nullptr);
+
+    return (current_videosink != nullptr);
+}
+
+void Player::freeGstPlayer()
+{
+    if (!isGstPlayerValid())
+        return;
+
+    BIND_TO_SCOPE(mGstPipeline);
+    BIND_TO_SCOPE(mGstPlayer);
+}
+
+bool Player::makeGstPlayer()
+{
+    bool success = true;
+
+    if (!(mGstPlayer = gst_player_new(nullptr, nullptr)))
+    {
+        NSVR_LOG("Unable to construct GstPlayer instance.");
+        success = false;
+    }
+
+    if (!(mGstPipeline = gst_player_get_pipeline(mGstPlayer)))
+    {
+        NSVR_LOG("Unable to obtain GstPlayer's pipeline.");
+        success = false;
+    }
+
+    return success;
+}
+
+void Player::freeVideoSink()
+{
+    if (!isGstPlayerValid() || !isVideoSinkValid())
+        return;
+
+    gpointer current_videosink = nullptr;
+    g_object_get(mGstPipeline, "video-sink", &current_videosink, nullptr);
+
+    if (current_videosink != nullptr)
+    {
+        if (auto current_videosink_element = GST_ELEMENT(current_videosink))
+        {
+            gst_object_unref(current_videosink_element);
+            g_object_set(mGstPipeline, "video-sink", nullptr, nullptr);
+        }
+        else
+        {
+            NSVR_LOG("FreeVideoSink was called but element cast failed.");
+            return;
+        }
+    }
+    else
+    {
+        NSVR_LOG("FreeVideoSink was called but no video-sink is set.");
+        return;
+    }
+}
+
+bool Player::makeVideoSink(int width, int height, const std::string& fmt)
+{
+    bool success = false;
+
+    if (auto appsink = gst_element_factory_make("appsink", nullptr))
+    {
+        if (auto videosink = GST_APP_SINK(appsink))
+        {
+            gst_app_sink_set_drop(videosink, TRUE);
+            gst_app_sink_set_max_buffers(videosink, 8);
+            gst_app_sink_set_emit_signals(videosink, FALSE);
+
+            GstAppSinkCallbacks     callbacks;
+            callbacks.eos           = nullptr;
+            callbacks.new_preroll   = reinterpret_cast<decltype(callbacks.new_preroll)>(onPreroll);
+            callbacks.new_sample    = reinterpret_cast<decltype(callbacks.new_sample)>(onSample);
+
+            gst_app_sink_set_callbacks(videosink, &callbacks, this, nullptr);
+
+            if (auto video_caps = gst_caps_new_simple(
+                "video/x-raw",
+                "format", G_TYPE_STRING, (fmt.empty() ? "BGRA" : fmt.c_str()),
+                "width", G_TYPE_INT, width,
+                "height", G_TYPE_INT, height,
+                nullptr))
+            {
+                BIND_TO_SCOPE(video_caps);
+                gst_app_sink_set_caps(videosink, video_caps);
+            }
+            else
+            {
+                NSVR_LOG("GstCaps construction failed.");
+                success = false;
+            }
+
+            g_object_set(mGstPipeline, "video-sink", appsink, nullptr);
+            success = true;
+        }
+        else
+        {
+            NSVR_LOG("Element cast to AppSink failed.");
+            success = false;
+        }
+
+        if (auto videosink = GST_BASE_SINK(appsink))
+        {
+            gst_base_sink_set_sync(videosink, TRUE);
+            gst_base_sink_set_qos_enabled(videosink, TRUE);
+            gst_base_sink_set_async_enabled(videosink, FALSE);
+            gst_base_sink_set_max_lateness(videosink, GST_CLOCK_TIME_NONE);
+        }
+        else
+        {
+            NSVR_LOG("Element cast to BaseSink failed.");
+            success = false;
+        }
+    }
+    else
+    {
+        NSVR_LOG("Unable to construct video AppSink.");
+        success = false;
+    }
+
+    return success;
 }
 
 Player::~Player()
@@ -34,8 +177,20 @@ bool Player::open(const std::string& path, gint width, gint height, const std::s
         return false;
     }
 
-    close();
-    onBeforeOpen();
+    bool gst_player_valid = isGstPlayerValid() || makeGstPlayer();
+
+    if (isVideoSinkValid())
+        freeVideoSink();
+
+    bool video_sink_valid = makeVideoSink(width, height, fmt);
+
+    mReady = gst_player_valid && video_sink_valid;
+
+    if (!isReady())
+    {
+        NSVR_LOG("Player is not ready to play. Construction failed.");
+        return false;
+    }
 
     if (path.empty())
     {
@@ -43,112 +198,30 @@ bool Player::open(const std::string& path, gint width, gint height, const std::s
         return false;
     }
 
-    GError*     errors = nullptr;
-    Discoverer  discoverer;
-    BIND_TO_SCOPE(errors);
+    onBeforeOpen();
+
+    bool success = false;
+    Discoverer discoverer;
 
     if (discoverer.open(path))
     {
-        std::stringstream pipeline_cmd;
+        gst_player_set_uri(mGstPlayer, discoverer.getMediaUri().c_str());
 
-        if (discoverer.getHasVideo())
-        {
-            pipeline_cmd
-                << "playbin uri=\""
-                << discoverer.getMediaUri()
-                << "\" video-sink=\"appsink drop=yes async=no qos=yes sync=yes max-lateness=" << GST_SECOND
-                << " caps=video/x-raw"
-                << ",width=" << width
-                << ",height=" << height
-                << ",format=" << fmt
-                << "\"";
-        }
-        else if (discoverer.getHasAudio())
-        {
-            pipeline_cmd
-                << "playbin uri=\""
-                << discoverer.getMediaUri()
-                << "\"";
-        }
-        else
-        {
-            NSVR_LOG("Media provided does not contain neither audio nor video.");
-            return false;
-        }
-
-        mPipeline = gst_parse_launch(pipeline_cmd.str().c_str(), &errors);
-
-        if (mPipeline == nullptr)
-        {
-            close();
-            NSVR_LOG("Unable to launch the pipeline [" << errors->message << "].");
-            return false;
-        }
-
-        mGstBus = gst_pipeline_get_bus(GST_PIPELINE(mPipeline));
-
-        if (mGstBus == nullptr)
-        {
-            close();
-            NSVR_LOG("Unable to obtain pipeline's event bus [" << errors->message << "].");
-            return false;
-        }
-
-        if (discoverer.getHasVideo())
-        {
-            GstAppSink *app_sink = nullptr;
-            BIND_TO_SCOPE(app_sink);
-
-            g_object_get(mPipeline, "video-sink", &app_sink, nullptr);
-
-            if (app_sink == nullptr)
-            {
-                close();
-                NSVR_LOG("Unable to obtain pipeline's video sink.");
-                return false;
-            }
-
-            GstAppSinkCallbacks     callbacks;
-            callbacks.eos           = nullptr;
-            callbacks.new_preroll   = reinterpret_cast<decltype(callbacks.new_preroll)>(onPreroll);
-            callbacks.new_sample    = reinterpret_cast<decltype(callbacks.new_sample)>(onSample);
-
-            gst_app_sink_set_callbacks(scoped_app_sink.pointer, &callbacks, this, nullptr);
-        }
-
+        pause();
         setupClock();
 
-        // Going from NULL => READY => PAUSE forces the
-        // pipeline to pre-roll so we can get video dim
-        GstState state;
-        unsigned timeout = 10;
+        mWidth = discoverer.getWidth();
+        mHeight = discoverer.getHeight();
 
-        if (gst_element_set_state(mPipeline, GST_STATE_READY) != GST_STATE_CHANGE_SUCCESS)
-        {
-            if (gst_element_get_state(mPipeline, &state, nullptr, timeout * GST_SECOND) == GST_STATE_CHANGE_FAILURE ||
-                state != GST_STATE_READY)
-            {
-                close();
-                NSVR_LOG("Failed to put pipeline in READY state.");
-                return false;
-            }
-        }
-
-        if (gst_element_set_state(mPipeline, GST_STATE_PAUSED) != GST_STATE_CHANGE_SUCCESS)
-        {
-            if (gst_element_get_state(mPipeline, &state, nullptr, timeout * GST_SECOND) == GST_STATE_CHANGE_FAILURE ||
-                state != GST_STATE_PAUSED)
-            {
-                close();
-                NSVR_LOG("Failed to put pipeline in PAUSE state.");
-                return false;
-            }
-        }
-
-        mDuration = discoverer.getDuration();
+        success = true;
+    }
+    else
+    {
+        NSVR_LOG("Unable to discover the media: " << path);
+        success = false;
     }
 
-    return true;
+    return success;
 }
 
 bool Player::open(const std::string& path, gint width, gint height)
@@ -160,7 +233,6 @@ bool Player::open(const std::string& path, const std::string& fmt)
 {
     Discoverer discoverer;
     return discoverer.open(path) && open(path, discoverer.getWidth(), discoverer.getHeight(), fmt);
-
 }
 
 bool Player::open(const std::string& path)
@@ -175,49 +247,41 @@ void Player::close()
 
     stop();
 
-    if (mPipeline != nullptr)      gst_object_unref(mPipeline);
-    if (mGstBus != nullptr)        gst_object_unref(mGstBus);
+    if (isVideoSinkValid())
+        freeVideoSink();
+
+    if (isGstPlayerValid())
+        freeGstPlayer();
+
     if (mCurrentBuffer != nullptr) gst_buffer_unmap(mCurrentBuffer, &mCurrentMapInfo);
     if (mCurrentSample != nullptr) gst_sample_unref(mCurrentSample);
 
     reset();
 }
 
-void Player::setState(GstState state)
+void Player::setState(GstPlayerState state)
 {
-    g_return_if_fail(mPipeline != nullptr);
-
-    onBeforeSetState(state);
-
-    GstState old_state = getState();
-    if (gst_element_set_state(mPipeline, state) == GST_STATE_CHANGE_SUCCESS)
-        onStateChanged(old_state);
+    if (state == GST_PLAYER_STATE_PAUSED)
+        pause();
+    else if (state == GST_PLAYER_STATE_PLAYING)
+        play();
+    else if (state == GST_PLAYER_STATE_STOPPED)
+        stop();
 }
 
-GstState Player::getState() const
+GstPlayerState Player::getState() const
 {
-    return mState;
-}
-
-GstState Player::queryState()
-{
-    if (gst_element_get_state(mPipeline, &mState, nullptr, GST_SECOND) == GST_STATE_CHANGE_FAILURE)
-        NSVR_LOG("Failed to obtain state in specified timeout.");
-
-    return mState;
+    return mPlayerState;
 }
 
 void Player::stop()
 {
-    setState(GST_STATE_NULL);
-    setState(GST_STATE_READY);
+    gst_player_stop(mGstPlayer);
 }
 
 void Player::play()
 {
-    setState(GST_STATE_PLAYING);
-    // This can happen if current instance is used to open a second URI
-    if (getMute() && getVolume() != 0.) setMute(true);
+    gst_player_play(mGstPlayer);
 }
 
 void Player::replay()
@@ -228,124 +292,15 @@ void Player::replay()
 
 void Player::pause()
 {
-    setState(GST_STATE_PAUSED);
+    if (!isReady())
+        return;
+
+    gst_player_pause(mGstPlayer);
 }
 
 void Player::update()
 {
     onBeforeUpdate();
-
-    if (mGstBus != nullptr)
-    {
-        while (gst_bus_have_pending(mGstBus) != FALSE)
-        {
-            if (GstMessage* msg = gst_bus_pop(mGstBus))
-            {
-                BIND_TO_SCOPE(msg);
-
-                switch (GST_MESSAGE_TYPE(msg))
-                {
-
-                case GST_MESSAGE_ERROR:
-                {
-                    GError* err = nullptr;
-                    gchar*  dbg = nullptr;
-                    
-                    BIND_TO_SCOPE(err);
-                    BIND_TO_SCOPE(dbg);
-
-                    gst_message_parse_error(msg, &err, &dbg);
-
-                    NSVR_LOG("Pipeline encountered an error: [" << err->message << "] debug: [" << dbg << "].");
-                }
-                break;
-
-                case GST_MESSAGE_STATE_CHANGED:
-                {
-                    if (GST_MESSAGE_SRC(msg) == GST_OBJECT(mPipeline))
-                    {
-                        GstState old_state = GST_STATE_NULL;
-                        gst_message_parse_state_changed(msg, &old_state, &mState, nullptr);
-
-                        if (old_state != mState)
-                        {
-                            onStateChanged(old_state);
-                        }
-                    }
-                }
-                break;
-
-                case GST_MESSAGE_ASYNC_DONE:
-                {
-                    if (mSeekingLock)
-                    {
-                        mSeekingLock = false;
-                    }
-
-                    if (mPendingSeek >= 0.)
-                    {
-                        setTime(mPendingSeek);
-                    }
-
-                    onSeekFinished();
-                }
-                break;
-
-                case GST_MESSAGE_DURATION_CHANGED:
-                {
-                    queryDuration();
-                }
-                break;
-
-                case GST_MESSAGE_EOS:
-                {
-                    onStreamEnd();
-
-                    if (getLoop())
-                    {
-                        replay();
-                    }
-                    else
-                    {
-                        pause();
-                    }
-                }
-                    break;
-
-                case GST_MESSAGE_WARNING:
-                {
-                    GError* err = nullptr;
-                    gchar*  dbg = nullptr;
-
-                    BIND_TO_SCOPE(err);
-                    BIND_TO_SCOPE(dbg);
-
-                    gst_message_parse_warning(msg, &err, &dbg);
-
-                    NSVR_LOG("Pipeline emitted warning: [" << err->message << "] debug: [" << dbg << "].");
-                }
-                    break;
-
-                case GST_MESSAGE_INFO:
-                {
-                    GError* err = nullptr;
-                    gchar*  dbg = nullptr;
-
-                    BIND_TO_SCOPE(err);
-                    BIND_TO_SCOPE(dbg);
-
-                    gst_message_parse_info(msg, &err, &dbg);
-
-                    NSVR_LOG("Pipeline emitted info: [" << err->message << "] debug: [" << dbg << "].");
-                }
-                break;
-
-                default:
-                    break;
-                }
-            }
-        }
-    }
 
     if (mBufferDirty)
     {
@@ -367,7 +322,7 @@ void Player::update()
 
 gdouble Player::getDuration() const
 {
-    return mDuration;
+    return static_cast<gdouble>(GST_TIME_AS_SECONDS(gst_player_get_duration(mGstPlayer)));
 }
 
 void Player::setLoop(bool on)
@@ -383,90 +338,32 @@ bool Player::getLoop() const
 
 void Player::setTime(gdouble time)
 {
-    g_return_if_fail(mPipeline != nullptr);
-
-    if (mSeekingLock || mDuration == 0)
-    {
-        mPendingSeek = time;
-        return;
-    }
-    else if (gst_element_seek_simple(
-        mPipeline,
-        GST_FORMAT_TIME,
-        GstSeekFlags(
-            GST_SEEK_FLAG_FLUSH |
-            GST_SEEK_FLAG_ACCURATE),
-        gint64(CLAMP(time, 0, mDuration) * GST_SECOND)) != FALSE)
-    {
-        mSeekingLock = true;
-        mPendingSeek = -1.;
-    }
-    else
-    {
-        NSVR_LOG("Flushing seek operation failed.");
-    }
+    gst_player_seek(mGstPlayer, static_cast<GstClockTime>(CLAMP(time, 0, getDuration()) * GST_SECOND));
 }
 
 gdouble Player::getTime() const
 {
-    g_return_val_if_fail(mPipeline != nullptr, 0.);
-
-    gint64 time_ns;
-    if (gst_element_query_position(mPipeline, GST_FORMAT_TIME, &time_ns) != FALSE)
-    {
-        mTime = time_ns / gdouble(GST_SECOND);
-    }
-
-    return mTime;
+    return static_cast<gdouble>(GST_TIME_AS_SECONDS(gst_player_get_position(mGstPlayer)));
 }
 
 void Player::setVolume(gdouble vol)
 {
-    g_return_if_fail(mPipeline != nullptr || mVolume != vol || !getMute());
-
-    mVolume = CLAMP(vol, 0., 1.);
-    mMute = false;
-
-    if (mPipeline)
-    {
-        g_object_set(mPipeline, "volume", mVolume, nullptr);
-    }
+    gst_player_set_volume(mGstPlayer, CLAMP(vol, 0., 1.));
 }
 
 gdouble Player::getVolume() const
 {
-    g_return_val_if_fail(mPipeline != nullptr, 0.);
-
-    if (mPipeline)
-    {
-        g_object_get(mPipeline, "volume", &mVolume, nullptr);
-    }
-
-    return mVolume;
+    return gst_player_get_volume(mGstPlayer);
 }
 
 void Player::setMute(bool on)
 {
-    static gdouble saved_volume = 1.;
-    g_return_if_fail(mPipeline != nullptr || (on && saved_volume == 0.));
-
-    if (on)
-    {
-        saved_volume = getVolume();
-        setVolume(0.);
-        mMute = true;
-    }
-    else
-    {
-        mMute = false;
-        setVolume(saved_volume);
-        saved_volume = 1.;
-    }
+    gst_player_set_mute(mGstPlayer, (on ? TRUE : FALSE));
 }
 
 bool Player::getMute() const
 {
-    return mMute;
+    return gst_player_get_mute(mGstPlayer) != FALSE;
 }
 
 gint Player::getWidth() const
@@ -481,18 +378,11 @@ gint Player::getHeight() const
 
 void Player::reset()
 {
-    mState          = GST_STATE_NULL;
-    mPipeline       = nullptr;
-    mGstBus         = nullptr;
+    mPlayerState    = GST_PLAYER_STATE_STOPPED;
     mCurrentBuffer  = nullptr;
     mCurrentSample  = nullptr;
     mWidth          = 0;
     mHeight         = 0;
-    mDuration       = 0;
-    mTime           = 0.;
-    mVolume         = 1.;
-    mPendingSeek    = -1.;
-    mSeekingLock    = false;
     mBufferDirty    = false;
 }
 
@@ -558,18 +448,6 @@ void Player::processSample(GstSample* const sample)
 
         // Signal UI thread it can consume
         mBufferDirty = true;
-    }
-}
-
-void Player::queryDuration()
-{
-    g_return_if_fail(mPipeline != nullptr);
-
-    // Nanoseconds
-    gint64 duration_ns = 0;
-    if (gst_element_query_duration(mPipeline, GST_FORMAT_TIME, &duration_ns) != FALSE) {
-        // Seconds
-        mDuration = duration_ns / gdouble(GST_SECOND);
     }
 }
 

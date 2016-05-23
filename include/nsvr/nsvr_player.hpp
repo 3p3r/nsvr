@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gst/gst.h>
+#include <gst/player/player.h>
 
 #include <atomic>
 #include <string>
@@ -57,14 +58,11 @@ public:
     //! answers duration of the media file. Valid after call to open()
     gdouble         getDuration() const;
 
-    //! sets state of the player (GST_STATE_PAUSED, etc.)
-    void            setState(GstState state);
+    //! sets state of the player
+    void            setState(GstPlayerState state);
 
-    //! answers the current cached state of the player (GST_STATE_PAUSED, etc.)
-    GstState        getState() const;
-
-    //! answers the current actual state of the player (GST_STATE_PAUSED, etc.)
-    GstState        queryState();
+    //! answers the current cached state of the player
+    GstPlayerState  getState() const;
 
     //! sets if the player should loop playback in the end (true) or not (false)
     void            setLoop(bool on);
@@ -125,8 +123,17 @@ protected:
     virtual void    onBeforeSetState(GstState state) {}
 
 private:
+    bool isReady() const;
+    bool isGstPlayerValid() const;
+    bool isVideoSinkValid() const;
+    void freeGstPlayer();
+    bool makeGstPlayer();
+    void freeVideoSink();
+    bool makeVideoSink(int width, int height, const std::string& fmt);
+
+private:
     //! Resets internal state of the Player (does not free any memories!)
-    void            reset();
+    void reset();
 
     //! Called by GStreamer on streaming thread when a rolled sample is ready
     static GstFlowReturn onPreroll(GstElement* appsink, Player* player);
@@ -137,29 +144,23 @@ private:
     //! Called inside onPreroll() or onSample() to consume the new video frame
     void processSample(GstSample* const sample);
 
-    //! Called within update() to query media duration when it is possible
-    void queryDuration();
+protected:
+    GstPlayer       *mGstPlayer;
+    GstElement      *mGstPipeline;
+    GstPlayerState  mPlayerState;
+    bool            mReady;
 
 protected:
-    GstState        mState;                 //!< Current state of the player (playing, paused, etc.)
     GstMapInfo      mCurrentMapInfo;        //!< Mapped Buffer info, ONLY valid inside onVideoFrame(...)
     GstSample       *mCurrentSample;        //!< Mapped Sample, ONLY valid inside onVideoFrame(...)
     GstBuffer       *mCurrentBuffer;        //!< Mapped Buffer, ONLY valid inside onVideoFrame(...)
-    GstElement      *mPipeline;             //!< GStreamer pipeline (play-bin) object
-    GstBus          *mGstBus;               //!< Bus associated with mPipeline
-    mutable gdouble mPendingSeek;           //!< Value of the seek operation pending to be executed
-    mutable bool    mSeekingLock;           //!< Boolean flag, indicating a seek operation is pending to be executed
 
 private:
     mutable gint    mWidth      = 0;        //!< Width of the video being played. Valid after a call to open(...)
     mutable gint    mHeight     = 0;        //!< Height of the video being played. Valid after a call to open(...)
-    mutable gdouble mDuration   = 0.;       //!< Duration of the media being played
-    mutable gdouble mTime       = 0.;       //!< Current time of the media being played (current position)
-    mutable gdouble mVolume     = 1.;       //!< Volume of the media being played
 
     std::atomic<bool>   mBufferDirty;       //!< Atomic boolean, representing a new frame is ready by GStreamer
     bool                mLoop   = false;    //!< Flag, indicating whether the player is looping or not
-    bool                mMute   = false;    //!< Flag, indicating whether the player is muted or not
 };
 
 }

@@ -1,3 +1,4 @@
+#if 0
 #include "nsvr/nsvr_packet_handler.hpp"
 #include "nsvr_internal.hpp"
 #include "nsvr.hpp"
@@ -110,3 +111,4 @@ void PlayerClient::onBeforeClose()
 }
 
 }
+#endif

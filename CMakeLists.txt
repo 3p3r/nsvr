@@ -50,6 +50,7 @@ TARGET_ADD_GSTREAMER_MODULES( nsvr.static
 	gstreamer-1.0
 	gstreamer-app-1.0
 	gstreamer-net-1.0
+	gstreamer-player-1.0
 	gstreamer-pbutils-1.0 )
 
 FIND_PACKAGE( Cinder QUIET )
@@ -69,6 +70,7 @@ FOREACH( TEST_TARGET ${TEST_TARGETS} )
 	gstreamer-1.0
 	gstreamer-app-1.0
 	gstreamer-net-1.0
+	gstreamer-player-1.0
 	gstreamer-pbutils-1.0 )
   CONFIGURE_CINDER_TARGET( test.${TEST_TARGET} )
   TARGET_LINK_LIBRARIES( test.${TEST_TARGET} nsvr.static )
