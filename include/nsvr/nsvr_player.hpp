@@ -126,41 +126,59 @@ private:
     bool isReady() const;
     bool isGstPlayerValid() const;
     bool isVideoSinkValid() const;
+    bool isContextValid() const;
+    void freeContext();
+    bool makeContext();
     void freeGstPlayer();
     bool makeGstPlayer();
     void freeVideoSink();
     bool makeVideoSink(int width, int height, const std::string& fmt);
 
 private:
-    //! Resets internal state of the Player (does not free any memories!)
-    void reset();
-
-    //! Called by GStreamer on streaming thread when a rolled sample is ready
-    static GstFlowReturn onPreroll(GstElement* appsink, Player* player);
-
-    //! Called by GStreamer on streaming thread when a new sample is ready
-    static GstFlowReturn onSample(GstElement* appsink, Player* player);
-
-    //! Called inside onPreroll() or onSample() to consume the new video frame
-    void processSample(GstSample* const sample);
-
-protected:
-    GstPlayer       *mGstPlayer;
-    GstElement      *mGstPipeline;
-    GstPlayerState  mPlayerState;
-    bool            mReady;
-
-protected:
-    GstMapInfo      mCurrentMapInfo;        //!< Mapped Buffer info, ONLY valid inside onVideoFrame(...)
-    GstSample       *mCurrentSample;        //!< Mapped Sample, ONLY valid inside onVideoFrame(...)
-    GstBuffer       *mCurrentBuffer;        //!< Mapped Buffer, ONLY valid inside onVideoFrame(...)
+    static void on_buffering(GstPlayer* player, gint percent, Player* self);
+    static void on_duration_changed(GstPlayer* player, GstClockTime duration, Player* self);
+    static void on_end_of_stream(GstPlayer* player, Player* self);
+    static void on_error(GstPlayer* player, GError* error, Player* self);
+    static void on_mute_changed(GstPlayer* player, Player* self);
+    static void on_position_updated(GstPlayer* player, GstClockTime position, Player* self);
+    static void on_seek_done(GstPlayer* player, guint64 position, Player* self);
+    static void on_state_changed(GstPlayer* player, GstPlayerState state, Player* self);
+    static void on_video_dimensions_changed(GstPlayer* player, gint width, gint height, Player* self);
+    static void on_volume_changed(GstPlayer* player, Player* self);
+    static void on_warning(GstPlayer* player, GError* warning, Player* self);
+    static GstFlowReturn on_videosink_preroll(GstElement* appsink, Player* player);
+    static GstFlowReturn on_videosink_sample(GstElement* appsink, Player* player);
 
 private:
-    mutable gint    mWidth      = 0;        //!< Width of the video being played. Valid after a call to open(...)
-    mutable gint    mHeight     = 0;        //!< Height of the video being played. Valid after a call to open(...)
+    void process_sample(GstSample* sample);
+    void reset_state();
 
-    std::atomic<bool>   mBufferDirty;       //!< Atomic boolean, representing a new frame is ready by GStreamer
-    bool                mLoop   = false;    //!< Flag, indicating whether the player is looping or not
+protected:
+    virtual void onBuffering(gint percent)                      { /* no-op */ }
+    virtual void onDurationChanged()                            { /* no-op */ }
+    virtual void onEndOfStream()                                { /* no-op */ }
+    virtual void onError(const std::string& /* message */)      { /* no-op */ }
+    virtual void onMuteChanged()                                { /* no-op */ }
+    virtual void onPositionChanged()                            { /* no-op */ }
+    virtual void onSeekStart()                                  { /* no-op */ }
+    virtual void onSeekDone()                                   { /* no-op */ }
+    virtual void onStateChanged()                               { /* no-op */ }
+    virtual void onVideoDimensionChanged()                      { /* no-op */ }
+    virtual void onVolumeChanged()                              { /* no-op */ }
+    virtual void onWarning(const std::string& /* message */)    { /* no-op */ }
+
+protected:
+    std::atomic<bool>   mBufferDirty;
+    GstMapInfo          mCurrentMapInfo;
+    GstSample*          mCurrentSample;
+    GstBuffer*          mCurrentBuffer;
+    GstPlayer*          mGstPlayer;
+    GstElement*         mGstPipeline;
+    GMainContext*       mPlayerContext;
+    GstPlayerState      mState;
+    gdouble             mDuration, mPosition, mVolume;
+    gint                mWidth, mHeight;
+    bool                mSeeking, mMute, mReady, mLoop;
 };
 
 }

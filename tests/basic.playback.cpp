@@ -74,7 +74,7 @@ void BasicPlayback::keyDown(KeyEvent event)
     switch (event.getCode())
     {
     case event.KEY_p:
-        mPlayer.getState() == GST_PLAYER_STATE_PLAYING ? mPlayer.pause() : mPlayer.play();
+        mPlayer.pause();
         break;
     case event.KEY_s:
         mPlayer.stop();

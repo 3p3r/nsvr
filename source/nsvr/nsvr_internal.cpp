@@ -17,23 +17,24 @@
 namespace nsvr {
 namespace internal {
 
-template<> BindToScope<gchar>::~BindToScope()                   { g_free(pointer); pointer = nullptr; }
-template<> BindToScope<GList>::~BindToScope()                   { gst_discoverer_stream_info_list_free(pointer); pointer = nullptr; }
-template<> BindToScope<GError>::~BindToScope()                  { g_error_free(pointer); pointer = nullptr; }
-template<> BindToScope<GstCaps>::~BindToScope()                 { gst_caps_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstClock>::~BindToScope()                { gst_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstPlayer>::~BindToScope()               { gst_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstMessage>::~BindToScope()              { gst_message_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstAppSink>::~BindToScope()              { g_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstElement>::~BindToScope()              { gst_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GInetAddress>::~BindToScope()            { g_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GSocketClient>::~BindToScope()           { g_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstDiscoverer>::~BindToScope()           { g_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GSocketAddress>::~BindToScope()          { g_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GSocketConnection>::~BindToScope()       { g_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstDiscovererInfo>::~BindToScope()       { gst_discoverer_info_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstNetTimeProvider>::~BindToScope()      { gst_object_unref(pointer); pointer = nullptr; }
-template<> BindToScope<GstDiscovererStreamInfo>::~BindToScope() { gst_discoverer_stream_info_unref(pointer); pointer = nullptr; }
+template<> BindToScope<gchar>::~BindToScope()                       { g_free(pointer); pointer = nullptr; }
+template<> BindToScope<GList>::~BindToScope()                       { gst_discoverer_stream_info_list_free(pointer); pointer = nullptr; }
+template<> BindToScope<GError>::~BindToScope()                      { g_error_free(pointer); pointer = nullptr; }
+template<> BindToScope<GstCaps>::~BindToScope()                     { gst_caps_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstClock>::~BindToScope()                    { gst_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstPlayer>::~BindToScope()                   { gst_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstMessage>::~BindToScope()                  { gst_message_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstAppSink>::~BindToScope()                  { g_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstElement>::~BindToScope()                  { gst_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GInetAddress>::~BindToScope()                { g_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GSocketClient>::~BindToScope()               { g_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstDiscoverer>::~BindToScope()               { g_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GSocketAddress>::~BindToScope()              { g_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GSocketConnection>::~BindToScope()           { g_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstDiscovererInfo>::~BindToScope()           { gst_discoverer_info_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstNetTimeProvider>::~BindToScope()          { gst_object_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstDiscovererStreamInfo>::~BindToScope()     { gst_discoverer_stream_info_unref(pointer); pointer = nullptr; }
+template<> BindToScope<GstPlayerSignalDispatcher>::~BindToScope()   { gst_object_unref(pointer); pointer = nullptr; }
 
 bool gstreamerInitialized()
 {

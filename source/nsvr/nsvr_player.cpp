@@ -9,7 +9,8 @@ namespace nsvr
 {
 
 Player::Player()
-    : mPlayerState(GST_PLAYER_STATE_STOPPED)
+    : mState(GST_PLAYER_STATE_STOPPED)
+    , mPlayerContext(nullptr)
     , mGstPipeline(nullptr)
     , mGstPlayer(nullptr)
     , mReady(false)
@@ -42,6 +43,25 @@ bool Player::isVideoSinkValid() const
     return (current_videosink != nullptr);
 }
 
+bool Player::isContextValid() const
+{
+    return (mPlayerContext != nullptr);
+}
+
+void Player::freeContext()
+{
+    if (!isContextValid())
+        return;
+
+    g_main_context_unref(mPlayerContext);
+    mPlayerContext = nullptr;
+}
+
+bool Player::makeContext()
+{
+    return (mPlayerContext = g_main_context_new()) != nullptr;
+}
+
 void Player::freeGstPlayer()
 {
     if (!isGstPlayerValid())
@@ -53,18 +73,41 @@ void Player::freeGstPlayer()
 
 bool Player::makeGstPlayer()
 {
-    bool success = true;
+    bool success = false;
 
-    if (!(mGstPlayer = gst_player_new(nullptr, nullptr)))
+    if (isContextValid())
+        freeContext();
+
+    if (!makeContext())
+    {
+        NSVR_LOG("Unable to construct player context.");
+        success = false;
+    }
+    else if (!(mGstPlayer = gst_player_new(nullptr, gst_player_g_main_context_signal_dispatcher_new(mPlayerContext))))
     {
         NSVR_LOG("Unable to construct GstPlayer instance.");
         success = false;
     }
-
-    if (!(mGstPipeline = gst_player_get_pipeline(mGstPlayer)))
+    else if (!(mGstPipeline = gst_player_get_pipeline(mGstPlayer)))
     {
         NSVR_LOG("Unable to obtain GstPlayer's pipeline.");
         success = false;
+    }
+    else
+    {
+        g_signal_connect(mGstPlayer, "buffering", G_CALLBACK(on_buffering), this);
+        g_signal_connect(mGstPlayer, "duration-changed", G_CALLBACK(on_duration_changed), this);
+        g_signal_connect(mGstPlayer, "end-of-stream", G_CALLBACK(on_end_of_stream), this);
+        g_signal_connect(mGstPlayer, "error", G_CALLBACK(on_error), this);
+        g_signal_connect(mGstPlayer, "mute-changed", G_CALLBACK(on_mute_changed), this);
+        g_signal_connect(mGstPlayer, "position-updated", G_CALLBACK(on_position_updated), this);
+        g_signal_connect(mGstPlayer, "seek-done", G_CALLBACK(on_seek_done), this);
+        g_signal_connect(mGstPlayer, "state-changed", G_CALLBACK(on_state_changed), this);
+        g_signal_connect(mGstPlayer, "video-dimension-changed", G_CALLBACK(on_video_dimensions_changed), this);
+        g_signal_connect(mGstPlayer, "volume-changed", G_CALLBACK(on_volume_changed), this);
+        g_signal_connect(mGstPlayer, "warning", G_CALLBACK(on_warning), this);
+
+        success = true;
     }
 
     return success;
@@ -112,8 +155,8 @@ bool Player::makeVideoSink(int width, int height, const std::string& fmt)
 
             GstAppSinkCallbacks     callbacks;
             callbacks.eos           = nullptr;
-            callbacks.new_preroll   = reinterpret_cast<decltype(callbacks.new_preroll)>(onPreroll);
-            callbacks.new_sample    = reinterpret_cast<decltype(callbacks.new_sample)>(onSample);
+            callbacks.new_preroll   = reinterpret_cast<decltype(callbacks.new_preroll)>(on_videosink_preroll);
+            callbacks.new_sample    = reinterpret_cast<decltype(callbacks.new_sample)>(on_videosink_sample);
 
             gst_app_sink_set_callbacks(videosink, &callbacks, this, nullptr);
 
@@ -212,6 +255,7 @@ bool Player::open(const std::string& path, gint width, gint height, const std::s
 
         mWidth = discoverer.getWidth();
         mHeight = discoverer.getHeight();
+        mDuration = discoverer.getDuration();
 
         success = true;
     }
@@ -256,7 +300,7 @@ void Player::close()
     if (mCurrentBuffer != nullptr) gst_buffer_unmap(mCurrentBuffer, &mCurrentMapInfo);
     if (mCurrentSample != nullptr) gst_sample_unref(mCurrentSample);
 
-    reset();
+    reset_state();
 }
 
 void Player::setState(GstPlayerState state)
@@ -271,7 +315,7 @@ void Player::setState(GstPlayerState state)
 
 GstPlayerState Player::getState() const
 {
-    return mPlayerState;
+    return mState;
 }
 
 void Player::stop()
@@ -302,6 +346,12 @@ void Player::update()
 {
     onBeforeUpdate();
 
+    if (isContextValid())
+    {
+        while (g_main_context_pending(mPlayerContext) != FALSE)
+            g_main_context_iteration(mPlayerContext, FALSE);
+    }
+
     if (mBufferDirty)
     {
         onVideoFrame(
@@ -322,12 +372,11 @@ void Player::update()
 
 gdouble Player::getDuration() const
 {
-    return static_cast<gdouble>(GST_TIME_AS_SECONDS(gst_player_get_duration(mGstPlayer)));
+    return mDuration;
 }
 
 void Player::setLoop(bool on)
 {
-    g_return_if_fail(mLoop != on);
     mLoop = on;
 }
 
@@ -338,12 +387,13 @@ bool Player::getLoop() const
 
 void Player::setTime(gdouble time)
 {
+    mSeeking = true;
     gst_player_seek(mGstPlayer, static_cast<GstClockTime>(CLAMP(time, 0, getDuration()) * GST_SECOND));
 }
 
 gdouble Player::getTime() const
 {
-    return static_cast<gdouble>(GST_TIME_AS_SECONDS(gst_player_get_position(mGstPlayer)));
+    return mPosition;
 }
 
 void Player::setVolume(gdouble vol)
@@ -353,7 +403,7 @@ void Player::setVolume(gdouble vol)
 
 gdouble Player::getVolume() const
 {
-    return gst_player_get_volume(mGstPlayer);
+    return mVolume;
 }
 
 void Player::setMute(bool on)
@@ -363,7 +413,7 @@ void Player::setMute(bool on)
 
 bool Player::getMute() const
 {
-    return gst_player_get_mute(mGstPlayer) != FALSE;
+    return mMute;
 }
 
 gint Player::getWidth() const
@@ -376,62 +426,43 @@ gint Player::getHeight() const
     return mHeight;
 }
 
-void Player::reset()
+void Player::reset_state()
 {
-    mPlayerState    = GST_PLAYER_STATE_STOPPED;
-    mCurrentBuffer  = nullptr;
+    mBufferDirty    = false;
+    mCurrentMapInfo = GstMapInfo();
     mCurrentSample  = nullptr;
+    mCurrentBuffer  = nullptr;
+    mGstPlayer      = nullptr;
+    mGstPipeline    = nullptr;
+    mPlayerContext  = nullptr;
+    mState          = GST_PLAYER_STATE_STOPPED;
+    mDuration       = 0.;
+    mPosition       = 0.;
+    mVolume         = 0.;
     mWidth          = 0;
     mHeight         = 0;
-    mBufferDirty    = false;
+    mSeeking        = false;
+    mMute           = false;
+    mLoop           = false;
 }
 
-GstFlowReturn Player::onPreroll(GstElement* appsink, Player* player)
+GstFlowReturn Player::on_videosink_preroll(GstElement* appsink, Player* player)
 {
-    // Here's our chance to get the actual dimension of the media.
-    // The actual dimension might be slightly different from what
-    // is passed into and requested from the pipeline.
-
     if (GstSample* sample = gst_app_sink_pull_preroll(GST_APP_SINK(appsink)))
-    {
-        if (GstCaps *caps = gst_sample_get_caps(sample))
-        {
-            if (gst_caps_is_fixed(caps) != FALSE)
-            {
-                if (GstStructure *str = gst_caps_get_structure(caps, 0))
-                {
-                    if (gst_structure_get_int(str, "width", &player->mWidth) == FALSE ||
-                        gst_structure_get_int(str, "height", &player->mHeight) == FALSE)
-                    {
-                        NSVR_LOG("No width/height information available.");
-                    }
-                }
-            }
-            else
-            {
-                NSVR_LOG("caps is not fixed for this media.");
-            }
-        }
-
-        if (player)
-            player->processSample(sample);
-    }
+        player->process_sample(sample);
 
     return GST_FLOW_OK;
 }
 
-GstFlowReturn Player::onSample(GstElement* appsink, Player* player)
+GstFlowReturn Player::on_videosink_sample(GstElement* appsink, Player* player)
 {
     if (GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink)))
-    {
-        if (player)
-            player->processSample(sample);
-    }
+        player->process_sample(sample);
 
     return GST_FLOW_OK;
 }
 
-void Player::processSample(GstSample* const sample)
+void Player::process_sample(GstSample* sample)
 {
     // Check if UI thread has consumed the last frame
     if (mBufferDirty)
@@ -449,6 +480,69 @@ void Player::processSample(GstSample* const sample)
         // Signal UI thread it can consume
         mBufferDirty = true;
     }
+}
+
+void Player::on_buffering(GstPlayer* /* player */, gint percent, Player* self)
+{
+    self->onBuffering(percent);
+}
+
+void Player::on_duration_changed(GstPlayer* /* player */, GstClockTime duration, Player* self)
+{
+    self->mDuration = static_cast<double>(GST_TIME_AS_SECONDS(duration));
+    self->onDurationChanged();
+}
+
+void Player::on_end_of_stream(GstPlayer* /* player */, Player* self)
+{
+    self->onEndOfStream();
+}
+
+void Player::on_error(GstPlayer* /* player */, GError* error, Player* self)
+{
+    self->onError(error->message);
+}
+
+void Player::on_mute_changed(GstPlayer* player, Player* self)
+{
+    self->mMute = gst_player_get_mute(player) != FALSE;
+    self->onMuteChanged();
+}
+
+void Player::on_position_updated(GstPlayer* /* player */, GstClockTime position, Player* self)
+{
+    self->mPosition = static_cast<double>(GST_TIME_AS_SECONDS(position));
+    self->onPositionChanged();
+}
+
+void Player::on_seek_done(GstPlayer* /* player */, guint64 position, Player* self)
+{
+    self->mSeeking = false;
+    self->onSeekFinished();
+}
+
+void Player::on_state_changed(GstPlayer* /* player */, GstPlayerState state, Player* self)
+{
+    self->mState = state;
+    self->onStateChanged();
+}
+
+void Player::on_video_dimensions_changed(GstPlayer* /* player */, gint width, gint height, Player* self)
+{
+    self->mWidth = width;
+    self->mHeight = height;
+    self->onVideoDimensionChanged();
+}
+
+void Player::on_volume_changed(GstPlayer* player, Player* self)
+{
+    self->mVolume = gst_player_get_volume(player);
+    self->onVolumeChanged();
+}
+
+void Player::on_warning(GstPlayer* /* player */, GError* warning, Player* self)
+{
+    self->onWarning(warning->message);
 }
 
 }
