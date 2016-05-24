@@ -1,6 +1,7 @@
 #pragma once
 
-#include <gst/gst.h>
+#include "nsvr/nsvr_discoverer.hpp"
+
 #include <gst/player/player.h>
 
 #include <atomic>
@@ -23,8 +24,8 @@ namespace nsvr
 class Player
 {
 public:
-    Player();
-    virtual         ~Player();
+    explicit Player();
+    virtual ~Player();
     //! opens a media file, can resize and reformat the video (if any). Returns true on success
     bool            open(const std::string& path, gint width, gint height, const std::string& fmt);
 
@@ -98,20 +99,8 @@ protected:
     //! Video frame callback, video buffer data and its size are passed in
     virtual void    onVideoFrame(guchar* buf, gsize size) const {}
 
-    //! State change event, propagated by the pipeline. Old state passed in, obtain new state with getState()
-    virtual void    onStateChanged(GstState old) {}
-
-    //! Called on end of the stream. Playback is finished at this point
-    virtual void    onStreamEnd() {}
-
     //! Called by whenever pipeline clock needs to be (re)constructed
     virtual void    setupClock() {}
-
-    //! Called when seeking operation is finished
-    virtual void    onSeekFinished() {}
-
-    //! Called before open() is called
-    virtual void    onBeforeOpen() {}
 
     //! Called before close() is called
     virtual void    onBeforeClose() {}
@@ -120,7 +109,7 @@ protected:
     virtual void    onBeforeUpdate() {}
 
     //! Called before setState() is called. target state is passed in.
-    virtual void    onBeforeSetState(GstState state) {}
+    virtual void    onBeforeSetState(GstPlayerState state) {}
 
 private:
     bool isReady() const;
@@ -139,6 +128,7 @@ private:
     static void on_duration_changed(GstPlayer* player, GstClockTime duration, Player* self);
     static void on_end_of_stream(GstPlayer* player, Player* self);
     static void on_error(GstPlayer* player, GError* error, Player* self);
+    static void on_media_info_updated(GstPlayer* player, GstPlayerMediaInfo *info, Player* self);
     static void on_mute_changed(GstPlayer* player, Player* self);
     static void on_position_updated(GstPlayer* player, GstClockTime position, Player* self);
     static void on_seek_done(GstPlayer* player, guint64 position, Player* self);
@@ -158,6 +148,7 @@ protected:
     virtual void onDurationChanged()                            { /* no-op */ }
     virtual void onEndOfStream()                                { /* no-op */ }
     virtual void onError(const std::string& /* message */)      { /* no-op */ }
+    virtual void onMediaInfoUpdated()                           { /* no-op */ }
     virtual void onMuteChanged()                                { /* no-op */ }
     virtual void onPositionChanged()                            { /* no-op */ }
     virtual void onSeekStart()                                  { /* no-op */ }
@@ -170,6 +161,7 @@ protected:
 protected:
     std::atomic<bool>   mBufferDirty;
     GstMapInfo          mCurrentMapInfo;
+    Discoverer          mDiscoverer;
     GstSample*          mCurrentSample;
     GstBuffer*          mCurrentBuffer;
     GstPlayer*          mGstPlayer;

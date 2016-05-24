@@ -1,3 +1,4 @@
+#if 0
 #pragma once
 
 #include "nsvr/nsvr_player.hpp"
@@ -44,3 +45,4 @@ private:
 };
 
 }
+#endif

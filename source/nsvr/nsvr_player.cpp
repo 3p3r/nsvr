@@ -9,12 +9,9 @@ namespace nsvr
 {
 
 Player::Player()
-    : mState(GST_PLAYER_STATE_STOPPED)
-    , mPlayerContext(nullptr)
-    , mGstPipeline(nullptr)
-    , mGstPlayer(nullptr)
-    , mReady(false)
 {
+    reset_state();
+
     if (!internal::gstreamerInitialized())
     {
         NSVR_LOG("Player requires GStreamer to be initialized.");
@@ -241,21 +238,18 @@ bool Player::open(const std::string& path, gint width, gint height, const std::s
         return false;
     }
 
-    onBeforeOpen();
-
     bool success = false;
-    Discoverer discoverer;
 
-    if (discoverer.open(path))
+    if (mDiscoverer.open(path))
     {
-        gst_player_set_uri(mGstPlayer, discoverer.getMediaUri().c_str());
+        gst_player_set_uri(mGstPlayer, mDiscoverer.getMediaUri().c_str());
 
         pause();
         setupClock();
 
-        mWidth = discoverer.getWidth();
-        mHeight = discoverer.getHeight();
-        mDuration = discoverer.getDuration();
+        mWidth = mDiscoverer.getWidth();
+        mHeight = mDiscoverer.getHeight();
+        mDuration = mDiscoverer.getDuration();
 
         success = true;
     }
@@ -428,6 +422,7 @@ gint Player::getHeight() const
 
 void Player::reset_state()
 {
+    mDiscoverer     .reset();
     mBufferDirty    = false;
     mCurrentMapInfo = GstMapInfo();
     mCurrentSample  = nullptr;
@@ -496,11 +491,19 @@ void Player::on_duration_changed(GstPlayer* /* player */, GstClockTime duration,
 void Player::on_end_of_stream(GstPlayer* /* player */, Player* self)
 {
     self->onEndOfStream();
+
+    if (self->getLoop())
+        self->play();
 }
 
 void Player::on_error(GstPlayer* /* player */, GError* error, Player* self)
 {
     self->onError(error->message);
+}
+
+void Player::on_media_info_updated(GstPlayer* /* player */, GstPlayerMediaInfo* /* info */, Player* self)
+{
+    self->onMediaInfoUpdated();
 }
 
 void Player::on_mute_changed(GstPlayer* player, Player* self)
@@ -518,7 +521,7 @@ void Player::on_position_updated(GstPlayer* /* player */, GstClockTime position,
 void Player::on_seek_done(GstPlayer* /* player */, guint64 position, Player* self)
 {
     self->mSeeking = false;
-    self->onSeekFinished();
+    self->onSeekDone();
 }
 
 void Player::on_state_changed(GstPlayer* /* player */, GstPlayerState state, Player* self)
