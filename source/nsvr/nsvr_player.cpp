@@ -19,11 +19,6 @@ Player::Player()
     }
 }
 
-bool Player::isReady() const
-{
-    return mReady;
-}
-
 bool Player::isGstPlayerValid() const
 {
     return (mGstPlayer != nullptr) && (mGstPipeline != nullptr);
@@ -100,7 +95,7 @@ bool Player::makeGstPlayer()
         g_signal_connect(mGstPlayer, "position-updated", G_CALLBACK(on_position_updated), this);
         g_signal_connect(mGstPlayer, "seek-done", G_CALLBACK(on_seek_done), this);
         g_signal_connect(mGstPlayer, "state-changed", G_CALLBACK(on_state_changed), this);
-        g_signal_connect(mGstPlayer, "video-dimension-changed", G_CALLBACK(on_video_dimensions_changed), this);
+        g_signal_connect(mGstPlayer, "video-dimensions-changed", G_CALLBACK(on_video_dimensions_changed), this);
         g_signal_connect(mGstPlayer, "volume-changed", G_CALLBACK(on_volume_changed), this);
         g_signal_connect(mGstPlayer, "warning", G_CALLBACK(on_warning), this);
 
@@ -217,49 +212,45 @@ bool Player::open(const std::string& path, gint width, gint height, const std::s
         return false;
     }
 
-    bool gst_player_valid = isGstPlayerValid() || makeGstPlayer();
-
-    if (isVideoSinkValid())
-        freeVideoSink();
-
-    bool video_sink_valid = makeVideoSink(width, height, fmt);
-
-    mReady = gst_player_valid && video_sink_valid;
-
-    if (!isReady())
-    {
-        NSVR_LOG("Player is not ready to play. Construction failed.");
-        return false;
-    }
-
     if (path.empty())
     {
         NSVR_LOG("Path given to Player is empty.");
         return false;
     }
 
-    bool success = false;
+    close();
+
+    if (!isGstPlayerValid() && !makeGstPlayer())
+    {
+        NSVR_LOG("Unable to construct GstPlayer instance.");
+        return false;
+    }
+
+    if (isVideoSinkValid())
+        freeVideoSink();
+
+    if (!makeVideoSink(width, height, fmt))
+    {
+        NSVR_LOG("Unable to construct video's AppSink instance.");
+        return false;
+    }
 
     if (mDiscoverer.open(path))
     {
         gst_player_set_uri(mGstPlayer, mDiscoverer.getMediaUri().c_str());
-
-        pause();
-        setupClock();
+        pause(); // pause to obtain preview sample (same as callbacks)
 
         mWidth = mDiscoverer.getWidth();
         mHeight = mDiscoverer.getHeight();
         mDuration = mDiscoverer.getDuration();
 
-        success = true;
+        return true;
     }
     else
     {
-        NSVR_LOG("Unable to discover the media: " << path);
-        success = false;
+        NSVR_LOG("Unable to discover media: " << mDiscoverer.getMediaUri());
+        return false;
     }
-
-    return success;
 }
 
 bool Player::open(const std::string& path, gint width, gint height)
@@ -281,7 +272,8 @@ bool Player::open(const std::string& path)
 
 void Player::close()
 {
-    onBeforeClose();
+    onClose();
+    onClockClear();
 
     stop();
 
@@ -314,11 +306,13 @@ GstPlayerState Player::getState() const
 
 void Player::stop()
 {
+    g_return_if_fail(isGstPlayerValid());
     gst_player_stop(mGstPlayer);
 }
 
 void Player::play()
 {
+    g_return_if_fail(isGstPlayerValid());
     gst_player_play(mGstPlayer);
 }
 
@@ -330,15 +324,13 @@ void Player::replay()
 
 void Player::pause()
 {
-    if (!isReady())
-        return;
-
+    g_return_if_fail(isGstPlayerValid()); 
     gst_player_pause(mGstPlayer);
 }
 
 void Player::update()
 {
-    onBeforeUpdate();
+    onUpdate();
 
     if (isContextValid())
     {
@@ -381,6 +373,8 @@ bool Player::getLoop() const
 
 void Player::setTime(gdouble time)
 {
+    g_return_if_fail(isGstPlayerValid());
+
     mSeeking = true;
     gst_player_seek(mGstPlayer, static_cast<GstClockTime>(CLAMP(time, 0, getDuration()) * GST_SECOND));
 }
@@ -392,6 +386,7 @@ gdouble Player::getTime() const
 
 void Player::setVolume(gdouble vol)
 {
+    g_return_if_fail(isGstPlayerValid());
     gst_player_set_volume(mGstPlayer, CLAMP(vol, 0., 1.));
 }
 
@@ -402,6 +397,7 @@ gdouble Player::getVolume() const
 
 void Player::setMute(bool on)
 {
+    g_return_if_fail(isGstPlayerValid());
     gst_player_set_mute(mGstPlayer, (on ? TRUE : FALSE));
 }
 
@@ -433,7 +429,7 @@ void Player::reset_state()
     mState          = GST_PLAYER_STATE_STOPPED;
     mDuration       = 0.;
     mPosition       = 0.;
-    mVolume         = 0.;
+    mVolume         = 1.;
     mWidth          = 0;
     mHeight         = 0;
     mSeeking        = false;
@@ -444,7 +440,7 @@ void Player::reset_state()
 GstFlowReturn Player::on_videosink_preroll(GstElement* appsink, Player* player)
 {
     if (GstSample* sample = gst_app_sink_pull_preroll(GST_APP_SINK(appsink)))
-        player->process_sample(sample);
+        player->extract_sample(sample);
 
     return GST_FLOW_OK;
 }
@@ -452,12 +448,12 @@ GstFlowReturn Player::on_videosink_preroll(GstElement* appsink, Player* player)
 GstFlowReturn Player::on_videosink_sample(GstElement* appsink, Player* player)
 {
     if (GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink)))
-        player->process_sample(sample);
+        player->extract_sample(sample);
 
     return GST_FLOW_OK;
 }
 
-void Player::process_sample(GstSample* sample)
+void Player::extract_sample(GstSample* sample)
 {
     // Check if UI thread has consumed the last frame
     if (mBufferDirty)
@@ -484,8 +480,13 @@ void Player::on_buffering(GstPlayer* /* player */, gint percent, Player* self)
 
 void Player::on_duration_changed(GstPlayer* /* player */, GstClockTime duration, Player* self)
 {
-    self->mDuration = static_cast<double>(GST_TIME_AS_SECONDS(duration));
-    self->onDurationChanged();
+    auto new_duration = static_cast<double>(GST_TIME_AS_SECONDS(duration));
+
+    if (new_duration != self->mDuration)
+    {
+        self->mDuration = new_duration;
+        self->onDurationChanged();
+    }
 }
 
 void Player::on_end_of_stream(GstPlayer* /* player */, Player* self)
@@ -501,27 +502,26 @@ void Player::on_error(GstPlayer* /* player */, GError* error, Player* self)
     self->onError(error->message);
 }
 
-void Player::on_media_info_updated(GstPlayer* /* player */, GstPlayerMediaInfo* /* info */, Player* self)
-{
-    self->onMediaInfoUpdated();
-}
-
 void Player::on_mute_changed(GstPlayer* player, Player* self)
 {
-    self->mMute = gst_player_get_mute(player) != FALSE;
-    self->onMuteChanged();
+    auto new_mute = gst_player_get_mute(player) != FALSE;
+
+    if (new_mute != self->mMute)
+    {
+        self->mMute = new_mute;
+        self->onMuteChanged();
+    }
 }
 
 void Player::on_position_updated(GstPlayer* /* player */, GstClockTime position, Player* self)
 {
-    self->mPosition = static_cast<double>(GST_TIME_AS_SECONDS(position));
-    self->onPositionChanged();
-}
+    auto new_position = static_cast<double>(GST_TIME_AS_SECONDS(position));
 
-void Player::on_seek_done(GstPlayer* /* player */, guint64 position, Player* self)
-{
-    self->mSeeking = false;
-    self->onSeekDone();
+    if (new_position != self->mPosition)
+    {
+        self->mPosition = new_position;
+        self->onPositionChanged();
+    }
 }
 
 void Player::on_state_changed(GstPlayer* /* player */, GstPlayerState state, Player* self)
@@ -530,17 +530,31 @@ void Player::on_state_changed(GstPlayer* /* player */, GstPlayerState state, Pla
     self->onStateChanged();
 }
 
+void Player::on_seek_done(GstPlayer* /* player */, guint64 position, Player* self)
+{
+    self->mSeeking = false;
+    self->onSeekDone();
+}
+
 void Player::on_video_dimensions_changed(GstPlayer* /* player */, gint width, gint height, Player* self)
 {
-    self->mWidth = width;
-    self->mHeight = height;
-    self->onVideoDimensionChanged();
+    if (self->mWidth != width || self->mHeight != height)
+    {
+        self->mWidth = width;
+        self->mHeight = height;
+        self->onVideoDimensionChanged();
+    }
 }
 
 void Player::on_volume_changed(GstPlayer* player, Player* self)
 {
-    self->mVolume = gst_player_get_volume(player);
-    self->onVolumeChanged();
+    auto new_volume = gst_player_get_volume(player);
+
+    if (new_volume != self->mVolume)
+    {
+        self->mVolume = new_volume;
+        self->onVolumeChanged();
+    }
 }
 
 void Player::on_warning(GstPlayer* /* player */, GError* warning, Player* self)
