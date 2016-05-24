@@ -25,7 +25,6 @@ public:
 
 protected:
     virtual void    onUpdate() override;
-    virtual void    onClose() override;
     virtual void    onClockSetup() override;
     virtual void    onClockClear() override;
     virtual void    onStateChanged() override;

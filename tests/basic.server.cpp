@@ -28,8 +28,6 @@ private:
         CinderPlayer();
         gl::TextureRef  mTexture;
         virtual void    onVideoFrame(guchar* buf, gsize size) const override;
-        virtual void    onStateChanged(GstState old) override;
-        virtual void    onStreamEnd() override;
         virtual void    onMessage(const std::string& message) override;
     };
 
@@ -49,23 +47,12 @@ void BasicServer::CinderPlayer::onVideoFrame(guchar* buf, gsize size) const
         mTexture->update(buf, GL_RGBA, GL_UNSIGNED_BYTE, 0, getWidth(), getHeight());
 }
 
-void BasicServer::CinderPlayer::onStreamEnd()
-{
-    std::cout << "EOS event received from GStreamer." << std::endl;
-}
-
 void BasicServer::CinderPlayer::onMessage(const std::string& message)
 {
     PlayerServer::onMessage(message);
 
     if (!message.empty())
         std::cout << "Message: " << message << std::endl;
-}
-
-void BasicServer::CinderPlayer::onStateChanged(GstState old)
-{
-    PlayerServer::onStateChanged(old);
-    std::cout << "GStreamer state changed from: " << old << " to: " << getState() << std::endl;
 }
 
 void BasicServer::setup()
@@ -87,7 +74,7 @@ void BasicServer::keyDown(KeyEvent event)
     switch (event.getCode())
     {
     case event.KEY_p:
-        mPlayer.queryState() == GST_STATE_PLAYING ? mPlayer.pause() : mPlayer.play();
+        mPlayer.getState() == GST_PLAYER_STATE_PLAYING ? mPlayer.pause() : mPlayer.play();
         break;
     case event.KEY_s:
         mPlayer.stop();

@@ -1,4 +1,3 @@
-#if 0
 #pragma once
 
 #include "nsvr/nsvr_player.hpp"
@@ -16,12 +15,10 @@ public:
     PlayerClient(const std::string& address, short port);
 
 protected:
-    virtual void    onBeforeOpen() override;
-    virtual void    onBeforeClose() override;
-    virtual void    onBeforeUpdate() override;
+    virtual void    onUpdate() override;
     virtual void    onMessage(const std::string& message) override;
-    virtual void    setupClock() override;
-    void            clearClock();
+    virtual void    onClockSetup() override;
+    virtual void    onClockClear();
 
 private:
     GstClock*       mNetClock;
@@ -29,4 +26,3 @@ private:
 };
 
 }
-#endif

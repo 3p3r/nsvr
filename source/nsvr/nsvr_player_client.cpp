@@ -1,4 +1,3 @@
-#if 0
 #include "nsvr/nsvr_packet_handler.hpp"
 #include "nsvr_internal.hpp"
 #include "nsvr.hpp"
@@ -36,60 +35,58 @@ void PlayerClient::onMessage(const std::string& message)
         if (getVolume() != packet.volume)
             setVolume(packet.volume);
 
-        if (mPipeline == nullptr || gst_element_get_base_time(mPipeline) != packet.base)
+        if (mGstPipeline == nullptr || gst_element_get_base_time(mGstPipeline) != packet.base)
             mBaseTime = packet.base;
 
-        if (mBaseTime == 0 && queryState() != packet.state)
+        if (mBaseTime == 0 && getState() != packet.state)
             setState(packet.state);
     }
 }
 
-void PlayerClient::setupClock()
+void PlayerClient::onClockSetup()
 {
-    g_return_if_fail(mPipeline != nullptr);
+    g_return_if_fail(mGstPipeline != nullptr);
 
     if (mBaseTime == 0)
         return;
-
-    clearClock();
 
     if (GstClock *net_clock = gst_net_client_clock_new(nullptr, getServerAddress().c_str(), internal::getClockPort(getServerPort()), mBaseTime))
     {
         mNetClock = net_clock;
         gst_clock_set_timeout(mNetClock, 100 * GST_MSECOND);
         
-        gst_pipeline_use_clock(GST_PIPELINE(mPipeline), net_clock);
-        gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
-        gst_element_set_base_time(mPipeline, mBaseTime);
+        gst_pipeline_use_clock(GST_PIPELINE(mGstPipeline), net_clock);
+        gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
+        gst_element_set_base_time(mGstPipeline, mBaseTime);
     }
 
     mBaseTime = 0;
 }
 
-void PlayerClient::onBeforeUpdate()
+void PlayerClient::onUpdate()
 {
-    g_return_if_fail(mPipeline != nullptr);
+    g_return_if_fail(mGstPipeline != nullptr);
 
     iterate();
 
     if (mBaseTime != 0)
     {
-        if (getState() != GST_STATE_READY)
+        if (getState() != GST_PLAYER_STATE_STOPPED)
         {
-            if (gst_element_set_state(mPipeline, GST_STATE_READY) == GST_STATE_CHANGE_FAILURE)
-                NSVR_LOG("Client failed to put pipeline into READY state for a pending base.")
+            stop();
         }
         else
         {
             NSVR_LOG("Client receieved a new base time.");
-            setupClock();
+            onClockClear();
+            onClockSetup();
         }
     }
 }
 
-void PlayerClient::clearClock()
+void PlayerClient::onClockClear()
 {
-    g_return_if_fail(mPipeline != nullptr);
+    g_return_if_fail(mGstPipeline != nullptr);
 
     if (mNetClock != nullptr)
     {
@@ -97,18 +94,7 @@ void PlayerClient::clearClock()
         mNetClock = nullptr;
     }
 
-    gst_element_set_base_time(mPipeline, GST_CLOCK_TIME_NONE);
-}
-
-void PlayerClient::onBeforeOpen()
-{
-    sendToServer("nsvr");
-}
-
-void PlayerClient::onBeforeClose()
-{
-    clearClock();
+    gst_element_set_base_time(mGstPipeline, GST_CLOCK_TIME_NONE);
 }
 
 }
-#endif

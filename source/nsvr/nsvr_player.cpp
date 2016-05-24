@@ -239,6 +239,7 @@ bool Player::open(const std::string& path, gint width, gint height, const std::s
     {
         gst_player_set_uri(mGstPlayer, mDiscoverer.getMediaUri().c_str());
         pause(); // pause to obtain preview sample (same as callbacks)
+        onClockSetup();
 
         mWidth = mDiscoverer.getWidth();
         mHeight = mDiscoverer.getHeight();

@@ -78,7 +78,6 @@ protected:
     virtual void onDurationChanged()                            { /* no-op */ }
     virtual void onEndOfStream()                                { /* no-op */ }
     virtual void onError(const std::string& /* message */)      { /* no-op */ }
-    virtual void onMediaInfoUpdated()                           { /* no-op */ }
     virtual void onMuteChanged()                                { /* no-op */ }
     virtual void onPositionChanged()                            { /* no-op */ }
     virtual void onSeekStart()                                  { /* no-op */ }
