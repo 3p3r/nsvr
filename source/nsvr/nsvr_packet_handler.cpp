@@ -55,7 +55,7 @@ bool PacketHandler::parse(const std::string& buffer, Packet& packet)
                     }
                     else if (command[0] == PACKET_STATE_ATT)
                     {
-                        packet.state = static_cast<GstState>(std::stoi(command.substr(1)));
+                        packet.state = static_cast<GstPlayerState>(std::stoi(command.substr(1)));
                         entities++;
                     }
                     else if (command[0] == PACKET_BASE_ATT)

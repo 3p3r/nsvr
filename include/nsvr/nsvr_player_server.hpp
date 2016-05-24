@@ -1,4 +1,3 @@
-#if 0
 #pragma once
 
 #include "nsvr/nsvr_player.hpp"
@@ -25,13 +24,12 @@ public:
     virtual void setTime(gdouble time) override;
 
 protected:
-    virtual void    onBeforeUpdate() override;
-    virtual void    onBeforeClose() override;
-    virtual void    setupClock() override;
-    virtual void    onBeforeSetState(GstState) override;
-    virtual void    onStateChanged(GstState) override;
+    virtual void    onUpdate() override;
+    virtual void    onClose() override;
+    virtual void    onClockSetup() override;
+    virtual void    onClockClear() override;
+    virtual void    onStateChanged() override;
     void            dispatchHeartbeat();
-    void            clearClock();
 
 private:
     GstClock*       mNetClock;
@@ -39,10 +37,10 @@ private:
     GstClockTime    mClockOffset;
     GstClockTime    mPendingCurrentTime;
     gdouble         mPendingStateSeek;
-    GstState        mPendingState;
+    gdouble         mPendingSeek;
+    GstPlayerState  mPendingState;
     unsigned        mHeartbeatCounter;
     unsigned        mHeartbeatFrequency;
 };
 
 }
-#endif

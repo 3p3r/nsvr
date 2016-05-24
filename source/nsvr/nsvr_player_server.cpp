@@ -1,4 +1,3 @@
-#if 0
 #include "nsvr/nsvr_packet_handler.hpp"
 #include "nsvr_internal.hpp"
 #include "nsvr.hpp"
@@ -14,7 +13,8 @@ PlayerServer::PlayerServer(const std::string& address, short port)
     , mHeartbeatCounter(0)
     , mHeartbeatFrequency(30)
     , mPendingStateSeek(-1.)
-    , mPendingState(GST_STATE_NULL)
+    , mPendingSeek(-1.)
+    , mPendingState(GST_PLAYER_STATE_STOPPED)
     , mPendingCurrentTime(GST_CLOCK_TIME_NONE)
 {
     if (!listen(address, port))
@@ -42,61 +42,55 @@ void PlayerServer::setTime(gdouble time)
 {
     mPendingCurrentTime = gst_clock_get_time(mNetClock);
     mPendingSeek = CLAMP(time, 0, getDuration());
-    mPendingState = queryState();
+    mPendingState = getState();
 }
 
-void PlayerServer::setupClock()
+void PlayerServer::onClockSetup()
 {
-    g_return_if_fail(mPipeline != nullptr);
+    g_return_if_fail(mGstPipeline != nullptr);
 
-    clearClock();
-
-    if ((mNetClock = gst_pipeline_get_clock(GST_PIPELINE(mPipeline))) &&
+    if ((mNetClock = gst_pipeline_get_clock(GST_PIPELINE(mGstPipeline))) &&
         (mNetProvider = GST_OBJECT(gst_net_time_provider_new(mNetClock, getListenAddress().c_str(), internal::getClockPort(getListenPort())))))
     {
         GstClockTime base_time = gst_clock_get_time(mNetClock);
 
         gst_clock_set_timeout(mNetClock, 100 * GST_MSECOND);
-        gst_pipeline_use_clock(GST_PIPELINE(mPipeline), mNetClock);
-        gst_element_set_start_time(mPipeline, GST_CLOCK_TIME_NONE);
-        gst_element_set_base_time(mPipeline, base_time);
+        gst_pipeline_use_clock(GST_PIPELINE(mGstPipeline), mNetClock);
+        gst_element_set_start_time(mGstPipeline, GST_CLOCK_TIME_NONE);
+        gst_element_set_base_time(mGstPipeline, base_time);
     }
 }
 
-void PlayerServer::onBeforeSetState(GstState target_state)
+void PlayerServer::onStateChanged()
 {
-    if (target_state == GST_STATE_NULL)
-        mPendingStateSeek = 0.;
-    else if (target_state == GST_STATE_PAUSED)
-        mPendingStateSeek = getTime();
-}
-
-void PlayerServer::onStateChanged(GstState old_state)
-{
-    if (queryState() == GST_STATE_PLAYING && mPendingStateSeek >= 0.)
+    if (getState() == GST_STATE_PLAYING && mPendingStateSeek >= 0.)
     {
         setTime(mPendingStateSeek);
         mPendingStateSeek = -1.;
     }
+    else if (getState() == GST_PLAYER_STATE_STOPPED)
+        mPendingStateSeek = 0.;
+    else if (getState() == GST_PLAYER_STATE_PAUSED)
+        mPendingStateSeek = getTime();
 }
 
 void PlayerServer::dispatchHeartbeat()
 {
-    g_return_if_fail(mPipeline != nullptr);
+    g_return_if_fail(mGstPipeline != nullptr);
 
     Packet packet;
     packet.time     = getTime();
     packet.volume   = getVolume();
     packet.mute     = getMute() ? TRUE : FALSE;
     packet.state    = getState();
-    packet.base     = gst_element_get_base_time(mPipeline);
+    packet.base     = gst_element_get_base_time(mGstPipeline);
 
     broadcastToClients(PacketHandler::serialize(packet));
 }
 
-void PlayerServer::clearClock()
+void PlayerServer::onClockClear()
 {
-    g_return_if_fail(mPipeline != nullptr);
+    g_return_if_fail(mGstPipeline != nullptr);
 
     if (mNetClock != nullptr)
     {
@@ -111,14 +105,9 @@ void PlayerServer::clearClock()
     }
 }
 
-void PlayerServer::onBeforeClose()
+void PlayerServer::onUpdate()
 {
-    clearClock();
-}
-
-void PlayerServer::onBeforeUpdate()
-{
-    g_return_if_fail(mPipeline != nullptr);
+    g_return_if_fail(mGstPipeline != nullptr);
 
     iterate();
 
@@ -132,22 +121,20 @@ void PlayerServer::onBeforeUpdate()
     {
         if (getState() != GST_STATE_READY)
         {
-            if (gst_element_set_state(mPipeline, GST_STATE_READY) == GST_STATE_CHANGE_FAILURE)
+            if (gst_element_set_state(mGstPipeline, GST_STATE_READY) == GST_STATE_CHANGE_FAILURE)
                 NSVR_LOG("Server failed to put pipeline into READY state for a pending seek.")
         }
         else
         {
-            auto time_curr = (mPendingCurrentTime - gst_element_get_base_time(mPipeline)) / gdouble(GST_SECOND);
+            auto time_curr = (mPendingCurrentTime - gst_element_get_base_time(mGstPipeline)) / gdouble(GST_SECOND);
             auto time_diff = time_curr - mPendingSeek;
-            auto time_base = gst_element_get_base_time(mPipeline) + GstClockTime(time_diff * GST_SECOND);
+            auto time_base = gst_element_get_base_time(mGstPipeline) + GstClockTime(time_diff * GST_SECOND);
 
-            gst_element_set_base_time(mPipeline, time_base);
-
-            if (gst_element_set_state(mPipeline, mPendingState) == GST_STATE_CHANGE_FAILURE)
-                NSVR_LOG("Server failed to put pipeline into old state for a pending seek.")
+            gst_element_set_base_time(mGstPipeline, time_base);
+            setState(mPendingState);
 
             mPendingSeek = -1.;
-            mPendingState = GST_STATE_NULL;
+            mPendingState = GST_PLAYER_STATE_STOPPED;
             mPendingCurrentTime = GST_CLOCK_TIME_NONE;
         }
     }
@@ -156,4 +143,3 @@ void PlayerServer::onBeforeUpdate()
 }
 
 }
-#endif

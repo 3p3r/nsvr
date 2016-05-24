@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gst/gst.h>
+#include <gst/player/player.h>
 #include <string>
 
 namespace nsvr
@@ -11,7 +11,7 @@ struct Packet
     gdouble         time    = 0;
     gdouble         volume  = 0;
     gboolean        mute    = FALSE;
-    GstState        state   = GST_STATE_NULL;
+    GstPlayerState  state   = GST_PLAYER_STATE_STOPPED;
     GstClockTime    base    = GST_CLOCK_TIME_NONE;
 };
 
